@@ -9,29 +9,29 @@ TRACE_LOG_LEVEL = 5
 
 
 def get_formatted_logger():
-    """Return a formatted logger."""
+    """返回一个带格式的日志器。"""
     logger = logging.getLogger("scraper")
-    # Set the logging level
+    # 设置日志级别
     logger.setLevel(logging.INFO)
 
-    # Check if the logger already has handlers to avoid duplicates
+    # 检查日志器是否已有处理器，避免重复
     if not logger.handlers:
-        # Create a handler
+        # 创建处理器
         handler = logging.StreamHandler()
 
-        # Create a formatter using DefaultFormatter
+        # 使用 DefaultFormatter 创建格式化器
         formatter = DefaultFormatter(
             "%(levelprefix)s [%(asctime)s] %(message)s",
             datefmt="%H:%M:%S"
         )
 
-        # Set the formatter for the handler
+        # 为处理器设置格式化器
         handler.setFormatter(formatter)
 
-        # Add the handler to the logger
+        # 将处理器添加到日志器
         logger.addHandler(handler)
 
-    # Disable propagation to prevent duplicate logging from parent loggers
+    # 禁止传播，防止父日志器重复记录
     logger.propagate = False
 
     return logger
@@ -39,11 +39,11 @@ def get_formatted_logger():
 
 class ColourizedFormatter(logging.Formatter):
     """
-    A custom log formatter class that:
+    自定义日志格式化器类，功能：
 
-    * Outputs the LOG_LEVEL with an appropriate color.
-    * If a log call includes an `extras={"color_message": ...}` it will be used
-      for formatting the output, instead of the plain text message.
+    * 以适当的颜色输出 LOG_LEVEL。
+    * 如果日志调用包含 `extras={"color_message": ...}`，则用它
+      格式化输出，替代纯文本消息。
     """
 
     level_name_colors = {

@@ -1,28 +1,26 @@
-"""URL security utilities for GPT Researcher.
+"""GPT Researcher 的 URL 安全工具。
 
-These helpers protect the scraping and document-loading pipelines against
-Server-Side Request Forgery (SSRF) and arbitrary local-file reads when the URLs
-originate from untrusted input (e.g. the ``source_urls`` / ``document_urls``
-parameters accepted by the API and WebSocket endpoints).
+当 URL 来自不可信输入（例如 API 和 WebSocket 端点接受的
+``source_urls`` / ``document_urls`` 参数）时，这些辅助函数可保护
+抓取和文档加载管线免受服务端请求伪造（SSRF）和任意本地文件读取。
 
-By default only ``http`` / ``https`` URLs whose host resolves to a public IP
-address are allowed. This blocks:
+默认只允许主机解析为公网 IP 地址的 ``http`` / ``https`` URL。这会阻止：
 
-* Non-HTTP schemes such as ``file://``, ``ftp://`` and ``gopher://``.
-* Local filesystem paths (no scheme/host), which some document loaders would
-  otherwise read directly from disk (arbitrary local file read).
-* Requests to private, loopback, link-local, reserved or otherwise internal
-  addresses (e.g. ``127.0.0.1``, ``10.0.0.0/8`` and the ``169.254.169.254``
-  cloud metadata endpoint).
+* 非 HTTP 协议，如 ``file://``、``ftp://`` 和 ``gopher://``。
+* 本地文件系统路径（无协议/主机），某些文档加载器否则会直接从磁盘
+  读取（任意本地文件读取）。
+* 对私有、回环、链路本地、保留或其他内部地址的请求
+  （如 ``127.0.0.1``、``10.0.0.0/8`` 以及 ``169.254.169.254``
+  云元数据端点）。
 
-Operators who intentionally scrape internal or self-hosted resources can opt out
-of the private-address check by setting the environment variable
-``ALLOW_PRIVATE_URLS=true`` (or by passing ``allow_private=True``).
+有意抓取内部或自托管资源的运维人员，可以通过设置环境变量
+``ALLOW_PRIVATE_URLS=true``（或传入 ``allow_private=True``）
+来跳过私有地址检查。
 
-Note: resolving the host here and letting the HTTP client re-resolve it later
-leaves a small TOCTOU/DNS-rebinding window. Closing it fully requires pinning the
-validated IP into the connection; this guard is intended as defence-in-depth that
-removes the trivial, unauthenticated SSRF and local-file-read primitives.
+注意：此处解析主机后由 HTTP 客户端稍后重新解析，会留下一个小的
+TOCTOU/DNS 重绑定窗口。要完全消除它需要将校验过的 IP 固定到连接中；
+此防护旨在作为纵深防御，消除最简单的、无需认证的 SSRF
+和本地文件读取原语。
 """
 
 from __future__ import annotations
@@ -38,7 +36,7 @@ _TRUTHY = ("1", "true", "yes", "on")
 
 
 class UnsafeURLError(ValueError):
-    """Raised when a URL is rejected by the SSRF / local-file protections."""
+    """当 URL 被 SSRF / 本地文件防护拒绝时抛出。"""
 
 
 def _private_urls_allowed() -> bool:
@@ -46,7 +44,7 @@ def _private_urls_allowed() -> bool:
 
 
 def _is_disallowed_ip(ip) -> bool:
-    """Return True if the address is not safe to contact (i.e. internal)."""
+    """如果该地址不安全（即内部地址）则返回 True。"""
     return (
         ip.is_private
         or ip.is_loopback
@@ -58,20 +56,20 @@ def _is_disallowed_ip(ip) -> bool:
 
 
 def validate_url(url: str, *, allow_private: bool | None = None) -> str:
-    """Validate that ``url`` is safe to fetch and return it unchanged.
+    """校验 ``url`` 是否可以安全抓取，并原样返回。
 
-    Args:
-        url: The URL to validate.
-        allow_private: When ``True``, skip the private/internal address check.
-            When ``None`` (default), fall back to the ``ALLOW_PRIVATE_URLS``
-            environment variable.
+    参数：
+        url: 要校验的 URL。
+        allow_private: 为 ``True`` 时跳过私有/内部地址检查。
+            为 ``None``（默认）时回退到 ``ALLOW_PRIVATE_URLS``
+            环境变量。
 
-    Returns:
-        The original ``url`` if it passes all checks.
+    返回：
+        通过所有检查时返回原始 ``url``。
 
-    Raises:
-        UnsafeURLError: If the URL uses a disallowed scheme, lacks a host, or
-            resolves to a non-public address.
+    抛出：
+        UnsafeURLError: 如果 URL 使用了不允许的协议、缺少主机，
+            或解析到非公网地址。
     """
     if not isinstance(url, str) or not url.strip():
         raise UnsafeURLError("URL must be a non-empty string.")
@@ -117,7 +115,7 @@ def validate_url(url: str, *, allow_private: bool | None = None) -> str:
 
 
 def is_safe_url(url: str, *, allow_private: bool | None = None) -> bool:
-    """Return ``True`` if ``url`` passes :func:`validate_url`, else ``False``."""
+    """如果 ``url`` 通过 :func:`validate_url` 则返回 ``True``，否则返回 ``False``。"""
     try:
         validate_url(url, allow_private=allow_private)
         return True

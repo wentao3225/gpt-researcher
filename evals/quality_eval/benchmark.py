@@ -1,19 +1,19 @@
 """
-Benchmark Runner
-----------------
-Compares 4 GPT-Researcher configurations across 8 research topics using
-the quality_eval metric suite.
+基准运行器
+----------
+在 8 个研究主题上，使用 quality_eval 指标套件比较
+4 种 GPT-Researcher 配置。
 
-Configurations:
-  single-gpt4o       — GPTResearcher    + gpt-4o
-  single-gpt4o-mini  — GPTResearcher    + gpt-4o-mini
-  multi-gpt4o        — ChiefEditorAgent + gpt-4o
-  multi-gpt4o-mini   — ChiefEditorAgent + gpt-4o-mini
+配置：
+  single-gpt4o       —— GPTResearcher    + gpt-4o
+  single-gpt4o-mini  —— GPTResearcher    + gpt-4o-mini
+  multi-gpt4o        —— ChiefEditorAgent + gpt-4o
+  multi-gpt4o-mini   —— ChiefEditorAgent + gpt-4o-mini
 
-Topics span high-authority domains (medical, legal, science) and
-low-authority domains (AI/tech, finance) to validate metric discrimination.
+主题横跨高权威领域（医学、法律、科学）与低权威领域（AI/科技、金融），
+用于验证指标的区分能力。
 
-Usage:
+用法：
     python -m evals.quality_eval.benchmark
     python -m evals.quality_eval.benchmark --configs single-gpt4o multi-gpt4o
     python -m evals.quality_eval.benchmark --no-llm-metrics
@@ -38,7 +38,7 @@ from langchain_openai import ChatOpenAI
 from evals.quality_eval.metrics import evaluate_report, is_skipped as _is_skipped
 
 # ---------------------------------------------------------------------------
-# Configuration
+# 配置
 # ---------------------------------------------------------------------------
 
 QUERIES = {
@@ -62,12 +62,12 @@ CONFIGS = [
 GRADER_MODEL_NAME = "gpt-4-turbo"
 LOGS_DIR = Path(__file__).parent / "logs"
 
-# High-authority topics — tagged HIGH in the per-topic summary (others shown "low").
+# 高权威主题 —— 在逐主题汇总中标记为 HIGH（其余显示为 "low"）。
 HIGH_AUTHORITY_TOPICS = {"medical", "legal", "physics", "chemistry", "climate", "history"}
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# 辅助函数
 # ---------------------------------------------------------------------------
 
 def _get_git_commit() -> str:
@@ -81,16 +81,16 @@ def _get_git_commit() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Researcher runners
+# 研究器运行入口
 # ---------------------------------------------------------------------------
 
 def _set_token_limit(model: str):
-    """gpt-4-turbo caps completion at 4096; default SMART_TOKEN_LIMIT (6000) errors."""
+    """gpt-4-turbo 把补全上限设为 4096；默认 SMART_TOKEN_LIMIT (6000) 会报错。"""
     os.environ["SMART_TOKEN_LIMIT"] = "4000" if model == "gpt-4-turbo" else "6000"
 
 
 async def _run_single_agent(query: str, model: str):
-    """Run GPTResearcher and return (report, sources, context)."""
+    """运行 GPTResearcher，返回 (report, sources, context)。"""
     os.environ["SMART_LLM"] = f"openai:{model}"
     _set_token_limit(model)
 
@@ -113,15 +113,15 @@ async def _run_single_agent(query: str, model: str):
 
 
 async def _run_multi_agent(query: str, model: str):
-    """Run ChiefEditorAgent and return (report, sources, context).
+    """运行 ChiefEditorAgent，返回 (report, sources, context)。
 
-    The multi-agent workflow only surfaces LLM-formatted markdown citations
-    in its final state (already filtered to "used" sources), which makes
-    citation/diversity incomparable to the single-agent path. To recover the
-    raw visited URLs — the same denominator the single-agent uses — we hook
-    GPTResearcher.conduct_research and collect every sub-researcher's
-    visited_urls and context. This patches only the test process, not the
-    upstream library.
+    多智能体工作流在最终状态中只暴露 LLM 格式化后的 Markdown 引用
+    （已被过滤为“已使用”的来源），这使得引用/多样性指标无法与
+    单智能体路径直接比较。为了找回原始访问过的 URL
+    —— 与单智能体所用的分母一致 —— 我们钩住
+    GPTResearcher.conduct_research，收集每个子研究者的
+    visited_urls 和上下文。该补丁只作用于测试进程，
+    不影响上游库。
     """
     os.environ["SMART_LLM"]     = f"openai:{model}"
     os.environ["STRATEGIC_LLM"] = f"openai:{model}"
@@ -162,13 +162,13 @@ async def _run_multi_agent(query: str, model: str):
         GPTResearcher.conduct_research = _orig
 
     report  = result.get("report", "")
-    sources = list(dict.fromkeys(collected_urls))          # dedup, preserve order
+    sources = list(dict.fromkeys(collected_urls))          # 去重，保留顺序
     context = "\n\n".join(collected_ctx) or result.get("initial_research", "")
-    return report, sources, context, None   # multi-agent cost not easily tracked
+    return report, sources, context, None   # 多智能体成本不易精确统计
 
 
 # ---------------------------------------------------------------------------
-# Per-query evaluation
+# 逐查询评估
 # ---------------------------------------------------------------------------
 
 async def _evaluate_query(
@@ -206,7 +206,7 @@ async def _evaluate_query(
     subtopic    = m["subtopic_coverage"]
     unsupported = m["unsupported_claim"]
 
-    # --- Console summary ---
+    # --- 控制台汇总 ---
     def _p(label, v, fn):
         if _is_skipped(v):
             print(f"      {label:<22} SKIPPED")
@@ -248,7 +248,7 @@ async def _evaluate_query(
 
 
 # ---------------------------------------------------------------------------
-# Per-config run
+# 按配置运行
 # ---------------------------------------------------------------------------
 
 def _avg(results, *key_path):
@@ -299,7 +299,7 @@ async def run_config(config: dict, grader_model, run_llm_metrics: bool, max_topi
         "failed":                     len(results) - len(successful),
     }
 
-    # Per-topic authority breakdown (key finding: high vs low authority domains)
+    # 逐主题的权威性分解（关键发现：高权威 vs 低权威领域）
     per_topic_authority = {}
     for r in successful:
         auth = r.get("source_authority")
@@ -334,11 +334,11 @@ async def run_config(config: dict, grader_model, run_llm_metrics: bool, max_topi
 
 
 # ---------------------------------------------------------------------------
-# Summary & comparison
+# 汇总与比较
 # ---------------------------------------------------------------------------
 
 def _dotget(obj, dotpath):
-    """Traverse a dot-separated key path; None if any step is missing."""
+    """沿点分隔的键路径逐层取值；任一步缺失则返回 None。"""
     cur = obj
     for k in dotpath.split("."):
         cur = cur.get(k) if isinstance(cur, dict) else None
@@ -352,7 +352,7 @@ def _fmt_val(v) -> str:
 
 
 def _arrow(a, b) -> str:
-    """Direction + magnitude for a numeric change (used by --compare)."""
+    """数值变化的方向与幅度（用于 --compare）。"""
     if a is None or b is None:
         return ""
     try:
@@ -365,7 +365,7 @@ def _arrow(a, b) -> str:
 
 
 def _print_summary(logs: list[dict]):
-    """Print metrics for N configs side by side (after a run / --summary-only)."""
+    """并排打印 N 个配置的指标（运行结束后 / --summary-only）。"""
     if not logs:
         return
 
@@ -394,7 +394,7 @@ def _print_summary(logs: list[dict]):
             continue
         print(f"  {label:<26}" + "".join(f"{_fmt_val(v):>{col_w}}" for v in vals))
 
-    # Per-topic authority breakdown
+    # 逐主题权威性分解
     print("\n  — Authority by Topic —")
     all_topics = set()
     for log in logs:
@@ -407,8 +407,8 @@ def _print_summary(logs: list[dict]):
     print(f"{'='*70}\n")
 
 
-# Metrics shown in the two-run --compare diff (broader than the live summary;
-# also tolerates run_eval logs, where missing fields are simply skipped).
+# 两轮 --compare 差异中展示的指标（比实时汇总更全面；
+# 也容忍 run_eval 日志，缺失字段会被直接跳过）。
 _COMPARE_METRICS = [
     ("aggregate_metrics.avg_citation_faithfulness",  "citation_faithful"),
     ("aggregate_metrics.avg_diversity_ratio",        "diversity_ratio"),
@@ -423,7 +423,7 @@ _COMPARE_METRICS = [
 
 
 def compare_logs(path_a: str, path_b: str, detail: bool = False):
-    """Diff two log files (before/after a change). One JSON object per file."""
+    """对两个日志文件做差异比较（改动前 vs 改动后）。每个文件一行 JSON。"""
     with open(path_a, encoding="utf-8") as f:
         log_a = json.loads(f.readline())
     with open(path_b, encoding="utf-8") as f:
@@ -450,7 +450,7 @@ def compare_logs(path_a: str, path_b: str, detail: bool = False):
 
 
 def _detail_diff(log_a: dict, log_b: dict):
-    """Per-query diff for queries present in both runs."""
+    """仅对两轮都出现的查询做逐条差异比较。"""
     ra = {r["query"]: r for r in log_a.get("results", []) if "query" in r}
     rb = {r["query"]: r for r in log_b.get("results", []) if "query" in r}
     shared = set(ra) & set(rb)
@@ -475,11 +475,11 @@ def _detail_diff(log_a: dict, log_b: dict):
 
 
 # ---------------------------------------------------------------------------
-# Main
+# 主入口
 # ---------------------------------------------------------------------------
 
 def _find_latest_log(config_name: str) -> Path | None:
-    """Return the most recent benchmark log for a config name, or None."""
+    """返回某配置名对应的最新基准日志，或 None。"""
     logs = sorted(LOGS_DIR.glob(f"benchmark_{config_name}_*.jsonl"), reverse=True)
     return logs[0] if logs else None
 
@@ -581,7 +581,7 @@ if __name__ == "__main__":
         compare_logs(args.compare[0], args.compare[1], detail=args.detail)
         sys.exit(0)
 
-    # Load API keys from file if not in environment
+    # 若环境变量中没有 API key，则从文件加载
     if not os.getenv("OPENAI_API_KEY"):
         key_path = Path("D:/chenh/api_keys/gpt_api_key.txt")
         if key_path.exists():

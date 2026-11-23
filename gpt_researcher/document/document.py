@@ -15,11 +15,11 @@ from langchain_community.document_loaders import BSHTMLLoader
 
 
 def detect_utf8(file_path: str) -> str | None:
-    """Return "utf-8-sig" if the file decodes as UTF-8, else None.
+    """如果文件能按 UTF-8 解码则返回 "utf-8-sig"，否则返回 None。
 
-    TextLoader and BSHTMLLoader otherwise open files with the locale encoding,
-    which on Windows is a code page such as cp1252 that rejects or garbles
-    UTF-8. Non-UTF-8 files keep that default; "utf-8-sig" also drops a BOM.
+    TextLoader 和 BSHTMLLoader 否则会用区域设置编码打开文件，
+    在 Windows 上是 cp1252 之类的代码页，会拒绝或弄乱 UTF-8。
+    非 UTF-8 文件保持该默认值；"utf-8-sig" 还会去掉 BOM。
     """
     with open(file_path, "rb") as f:
         try:
@@ -38,7 +38,7 @@ class DocumentLoader:
         tasks = []
         if isinstance(self.path, list):
             for file_path in self.path:
-                if os.path.isfile(file_path):  # Ensure it's a valid file
+                if os.path.isfile(file_path):  # 确保是有效文件
                     filename = os.path.basename(file_path)
                     file_name, file_extension_with_dot = os.path.splitext(filename)
                     file_extension = file_extension_with_dot.strip(".").lower()
@@ -66,8 +66,8 @@ class DocumentLoader:
         for pages in await asyncio.gather(*tasks):
             for page in pages:
                 if page.page_content:
-                    # Loaders occasionally omit metadata["source"] (custom loaders,
-                    # some HTML partitions). Prefer source, then fall back to path.
+                    # 加载器偶尔会省略 metadata["source"]（自定义加载器、
+                    # 某些 HTML 分区）。优先用 source，然后回退到路径。
                     meta = getattr(page, "metadata", None) or {}
                     source = meta.get("source") or meta.get("file_path") or ""
                     url = os.path.basename(source) if source else ""

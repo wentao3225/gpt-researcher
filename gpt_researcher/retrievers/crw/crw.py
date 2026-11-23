@@ -1,8 +1,8 @@
-"""fastCRW API search retriever for GPT Researcher.
+"""GPT Researcher 的 fastCRW API 搜索检索器。
 
-This module provides the CRWRetriever class for performing web searches
-using fastCRW, a Firecrawl-compatible web data engine (single binary;
-self-host or managed cloud).
+此模块提供使用 fastCRW（Firecrawl 兼容的网页数据引擎，
+单个二进制文件；可自托管或使用托管云）执行网络搜索的
+CRWRetriever 类。
 """
 
 import json
@@ -13,18 +13,18 @@ import requests
 
 class CRWRetriever:
     """
-    fastCRW API Retriever
+    fastCRW API 检索器
     """
 
     def __init__(self, query, headers=None, topic="general", query_domains=None):
         """
-        Initializes the CRWRetriever object.
+        初始化 CRWRetriever 对象。
 
-        Args:
-            query (str): The search query string.
-            headers (dict, optional): Additional headers to include in the request. Defaults to None.
-            topic (str, optional): The topic for the search. Defaults to "general".
-            query_domains (list, optional): List of domains to include in the search. Defaults to None.
+        参数：
+            query (str): 搜索查询字符串。
+            headers (dict, 可选): 请求中包含的额外请求头。默认为 None。
+            topic (str, 可选): 搜索的主题。默认为 "general"。
+            query_domains (list, 可选): 要包含在搜索中的域名列表。默认为 None。
         """
         input_headers = headers or {}
         self.query = query
@@ -40,10 +40,10 @@ class CRWRetriever:
 
     def get_api_key(self, headers):
         """
-        Gets the fastCRW API key
-        Args:
-            headers (dict): The headers passed to the retriever.
-        Returns:
+        获取 fastCRW API 密钥
+        参数：
+            headers (dict): 传给检索器的请求头。
+        返回：
 
         """
         api_key = headers.get("crw_api_key")
@@ -59,15 +59,14 @@ class CRWRetriever:
 
     def get_base_url(self, headers):
         """
-        Gets the fastCRW base URL, allowing self-host overrides.
+        获取 fastCRW 基础 URL，允许自托管覆盖。
 
-        Defaults to the managed cloud at https://fastcrw.com/api. Override with
-        the CRW_API_URL environment variable (or the crw_api_url header) to point
-        at a self-hosted server.
-        Args:
-            headers (dict): The headers passed to the retriever.
-        Returns:
-            The base URL (without a trailing slash).
+        默认为托管云 https://fastcrw.com/api。通过 CRW_API_URL 环境变量
+        （或 crw_api_url 请求头）覆盖，指向自托管服务器。
+        参数：
+            headers (dict): 传给检索器的请求头。
+        返回：
+            基础 URL（不带尾部斜杠）。
         """
         base_url = headers.get("crw_api_url") or os.environ.get(
             "CRW_API_URL", "https://fastcrw.com/api"
@@ -76,7 +75,7 @@ class CRWRetriever:
 
     def _search(self, query: str, max_results: int = 10) -> dict:
         """
-        Internal search method to send the request to the API.
+        向 API 发送请求的内部搜索方法。
         """
 
         data = {
@@ -90,28 +89,28 @@ class CRWRetriever:
             headers=self.headers,
             timeout=100,
         )
-        # Raises a HTTPError if the HTTP request returned an unsuccessful status code
+        # 如果 HTTP 请求返回不成功的状态码则抛出 HTTPError
         response.raise_for_status()
         results = response.json()
-        # fastCRW wraps responses in a {success, error, data} envelope.
+        # fastCRW 将响应包装在 {success, error, data} 信封中。
         if results.get("success") is False:
             raise Exception(results.get("error", "fastCRW API search failed."))
         return results
 
     def search(self, max_results=10):
         """
-        Searches the query
-        Returns:
+        搜索查询
+        返回：
 
         """
         try:
-            # Search the query
+            # 搜索查询
             results = self._search(self.query, max_results=max_results)
             sources = results.get("data") or []
             if not isinstance(sources, list) or not sources:
                 raise Exception("No results found with fastCRW API search.")
-            # Return the results. A source missing "url" is unusable, so skip it
-            # rather than raising a KeyError that discards the whole result set.
+            # 返回结果。缺少 "url" 的来源不可用，跳过它而不是抛出
+            # 丢弃整个结果集的 KeyError。
             search_response = []
             for obj in sources:
                 if not isinstance(obj, dict):

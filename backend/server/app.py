@@ -7,7 +7,7 @@ import sys
 import warnings
 from pathlib import Path
 
-# Suppress Pydantic V2 migration warnings
+# 抑制 Pydantic V2 迁移警告
 warnings.filterwarnings("ignore", message="Valid config keys have changed in V2")
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from pydantic import BaseModel, ConfigDict
 
-# Add the parent directory to sys.path to make sure we can import from server
+# 把父目录加入 sys.path，确保可以从 server 导入
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 from server.websocket_manager import WebSocketManager
@@ -36,18 +36,18 @@ from chat.chat import ChatAgentWithMemory
 
 from server.report_store import ReportStore
 
-# MongoDB services removed - no database persistence needed
+# MongoDB 服务已移除 - 不需要数据库持久化
 
-# Setup logging
+# 设置日志
 logger = logging.getLogger(__name__)
 
-# Don't override parent logger settings
+# 不覆盖父日志器设置
 logger.propagate = True
 
-# Silence uvicorn reload logs
+# 静默 uvicorn reload 日志
 logging.getLogger("uvicorn.supervisors.ChangeReload").setLevel(logging.WARNING)
 
-# Models
+# 模型
 
 
 class ResearchRequest(BaseModel):
@@ -62,7 +62,7 @@ class ResearchRequest(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    model_config = ConfigDict(extra="allow")  # Allow extra fields in the request
+    model_config = ConfigDict(extra="allow")  # 允许请求中带有额外字段
     
     report: str
     messages: List[Dict[str, Any]]
@@ -70,17 +70,17 @@ class ChatRequest(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    # 启动
     os.makedirs("outputs", exist_ok=True)
     app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
     
-    # Mount frontend static files
+    # 挂载前端静态文件
     frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend")
     if os.path.exists(frontend_path):
         app.mount("/site", StaticFiles(directory=frontend_path), name="frontend")
         logger.debug(f"Frontend mounted from: {frontend_path}")
         
-        # Also mount the static directory directly for assets referenced as /static/
+        # 同时直接挂载 static 目录，供以 /static/ 引用的资源使用
         static_path = os.path.join(frontend_path, "static")
         if os.path.exists(static_path):
             app.mount("/static", StaticFiles(directory=static_path), name="static")
@@ -90,13 +90,13 @@ async def lifespan(app: FastAPI):
     
     logger.info("GPT Researcher API ready - local mode (no database persistence)")
     yield
-    # Shutdown
+    # 关闭
     logger.info("Research API shutting down")
 
-# App initialization
+# 应用初始化
 app = FastAPI(lifespan=lifespan)
 
-# Configure allowed origins for CORS
+# 配置 CORS 允许的来源
 allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS")
 ALLOWED_ORIGINS = (
     [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
@@ -108,9 +108,9 @@ ALLOWED_ORIGINS = (
     ]
 )
 
-# Standard JSON response - no custom MongoDB encoding needed
+# 标准 JSON 响应 - 不需要自定义 MongoDB 编码
 
-# Add CORS middleware
+# 添加 CORS 中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -119,34 +119,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Use default JSON response class
+# 使用默认的 JSON 响应类
 
-# Mount static files for frontend
-# Get the absolute path to the frontend directory
+# 为前端挂载静态文件
+# 获取 frontend 目录的绝对路径
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 
-# Mount static directories
+# 挂载静态目录
 app.mount("/static", StaticFiles(directory=os.path.join(frontend_dir, "static")), name="static")
 app.mount("/site", StaticFiles(directory=frontend_dir), name="site")
 
-# WebSocket manager
+# WebSocket 管理器
 manager = WebSocketManager()
 
 report_store = ReportStore(Path(os.getenv('REPORT_STORE_PATH', os.path.join('data', 'reports.json'))))
 
-# Constants
+# 常量
 DOC_PATH = os.getenv("DOC_PATH", "./my-docs")
 
-# Startup event
+# 启动事件
 
 
-# Lifespan events now handled in the lifespan context manager above
+# 生命周期事件现由上文的 lifespan 上下文管理器处理
 
 
-# Routes
+# 路由
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    """Serve the main frontend HTML page."""
+    """提供前端主 HTML 页面。"""
     frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
     index_path = os.path.join(frontend_dir, "index.html")
     
@@ -161,7 +161,7 @@ async def serve_frontend():
 
 @app.get("/.well-known/agent-discovery.json")
 async def agent_discovery(request: Request):
-    """Advertise GPT Researcher services via the Agent Discovery Protocol."""
+    """通过 Agent Discovery 协议广播 GPT Researcher 服务。"""
     origin = str(request.base_url).rstrip("/")
     domain = request.url.hostname or request.headers.get("host", "")
     contact = os.getenv("AGENT_DISCOVERY_CONTACT")
@@ -179,7 +179,7 @@ async def read_report(request: Request, research_id: str):
     return FileResponse(docx_path)
 
 
-# Simplified API routes - no database persistence
+# 简化的 API 路由 - 无数据库持久化
 @app.get("/api/reports")
 async def get_all_reports(report_ids: str = None):
     report_ids_list = report_ids.split(",") if report_ids else None
@@ -264,7 +264,7 @@ async def get_report_chat(research_id: str):
 
 @app.post("/api/reports/{research_id}/chat")
 async def research_report_chat(research_id: str, request: Request):
-    """Chat against a stored report: LLM reply + persist user/assistant messages."""
+    """针对已存储报告进行对话：LLM 回复 + 持久化用户/助手消息。"""
     report = await report_store.get_report(research_id)
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -276,7 +276,7 @@ async def research_report_chat(research_id: str, request: Request):
     if not isinstance(data, dict):
         data = {}
 
-    # Accept either a bare chat message object or {messages, report, message}
+    # 接受单个聊天消息对象或 {messages, report, message}
     incoming_messages = data.get("messages")
     if not isinstance(incoming_messages, list):
         if any(key in data for key in ("role", "content")):
@@ -417,30 +417,30 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"Unexpected WebSocket error: {str(e)}")
     finally:
-        # Release the connection's queue and sender task however the loop ended.
+        # 无论循环如何结束，都释放连接的队列和发送任务。
         await manager.disconnect(websocket)
 
 @app.post("/api/chat")
 async def chat(chat_request: ChatRequest):
-    """Process a chat request with a report and message history.
+    """处理带报告和消息历史的聊天请求。
 
-    Args:
-        chat_request: ChatRequest object containing report text and message history
+    参数：
+        chat_request: 包含报告文本和消息历史的 ChatRequest 对象
 
-    Returns:
-        JSON response with the assistant's message and any tool usage metadata
+    返回：
+        带助手消息和工具使用元数据的 JSON 响应
     """
     try:
         logger.info(f"Received chat request with {len(chat_request.messages)} messages")
 
-        # Create chat agent with the report
+        # 创建带报告的聊天智能体
         chat_agent = ChatAgentWithMemory(
             report=chat_request.report,
             config_path="default",
             headers=None
         )
 
-        # Process the chat and get response with metadata
+        # 处理聊天并获取带元数据的响应
         response_content, tool_calls_metadata = await chat_agent.chat(chat_request.messages, None)
         logger.info(f"response_content: {response_content}")
         logger.info(f"Got chat response of length: {len(response_content) if response_content else 0}")
@@ -448,11 +448,11 @@ async def chat(chat_request: ChatRequest):
         if tool_calls_metadata:
             logger.info(f"Tool calls used: {json.dumps(tool_calls_metadata)}")
 
-        # Format response as a ChatMessage object with role, content, timestamp and metadata
+        # 将响应格式化为带角色、内容、时间戳和元数据的 ChatMessage 对象
         response_message = {
             "role": "assistant",
             "content": response_content,
-            "timestamp": int(time.time() * 1000),  # Current time in milliseconds
+            "timestamp": int(time.time() * 1000),  # 当前时间（毫秒）
             "metadata": {
                 "tool_calls": tool_calls_metadata
             } if tool_calls_metadata else None

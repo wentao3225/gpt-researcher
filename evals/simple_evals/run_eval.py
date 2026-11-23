@@ -5,7 +5,7 @@ import argparse
 import json
 import subprocess
 
-# Ensure Unicode output works on Windows terminals (GBK → UTF-8)
+# 确保在 Windows 终端（GBK → UTF-8）下 Unicode 输出正常
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import time
@@ -24,7 +24,7 @@ LOGS_DIR = Path(__file__).parent / "logs"
 
 
 def get_git_commit() -> str:
-    """Return the current HEAD commit hash, or 'unknown' if not in a git repo."""
+    """返回当前 HEAD 的提交哈希；若不在 git 仓库中则返回 'unknown'。"""
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -34,16 +34,16 @@ def get_git_commit() -> str:
     except Exception:
         return "unknown"
 
-# Type variables for generic function
+# 泛型函数用的类型变量
 T = TypeVar('T')
 R = TypeVar('R')
 
 def map_with_progress(fn: Callable[[T], R], items: List[T]) -> List[R]:
-    """Map function over items with progress bar."""
+    """对每个元素应用函数，并附带进度条。"""
     return [fn(item) for item in tqdm(items)]
 
 def _check_env_vars():
-    """Verify required environment variables are set. Called inside main() so --help works."""
+    """校验必需的环境变量是否已设置。放在 main() 内调用，以便 --help 能正常工作。"""
     load_dotenv()
     required = ["OPENAI_API_KEY", "TAVILY_API_KEY"]
     missing = [v for v in required if not os.getenv(v)]
@@ -53,10 +53,10 @@ def _check_env_vars():
         print("Note: LANGCHAIN_API_KEY not set — LangSmith tracing disabled (optional)")
 
 async def evaluate_single_query(query: str, evaluator: SimpleQAEval) -> dict:
-    """Run a single evaluation query and return results"""
+    """运行单个评估查询并返回结果"""
     print(f"\nEvaluating query: {query}")
     
-    t_start = time.perf_counter()   # timmer for each query
+    t_start = time.perf_counter()   # 每个查询的计时起点
 
     researcher = GPTResearcher(
         query=query,
@@ -69,10 +69,10 @@ async def evaluate_single_query(query: str, evaluator: SimpleQAEval) -> dict:
     context = await researcher.conduct_research()
     report = await researcher.write_report()
 
-    latency_seconds = round(time.perf_counter() - t_start, 2)   # latency of responding
+    latency_seconds = round(time.perf_counter() - t_start, 2)   # 响应延迟
 
-    # Get the correct answer and evaluate
-    example = next((ex for ex in evaluator.examples if ex['problem'] == query), None)   # None if no attribute 'problem'
+    # 获取正确答案并进行评估
+    example = next((ex for ex in evaluator.examples if ex['problem'] == query), None)   # 没有 'problem' 键则为 None
     if example is None:
         raise ValueError(f"No matching example found for query: {query}")
     correct_answer = example['answer']
@@ -83,7 +83,7 @@ async def evaluate_single_query(query: str, evaluator: SimpleQAEval) -> dict:
         "predicted": report
     })
 
-    # result gathering and formating
+    # 结果收集与格式化
     result = {
         'query': query,
         'context_length': len(context),
@@ -106,14 +106,14 @@ async def evaluate_single_query(query: str, evaluator: SimpleQAEval) -> dict:
 async def main(num_examples: int):
     if num_examples < 1:
         raise ValueError("num_examples must be at least 1")
-    # start timming
+    # 开始计时
     _check_env_vars()
 
     run_start = time.perf_counter()
     run_timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
-        # initiate evaluator
+        # 初始化评估器
         grader_model = ChatOpenAI(
             temperature=0,
             model_name=GRADER_MODEL_NAME,
@@ -126,7 +126,7 @@ async def main(num_examples: int):
         
         print(f"Starting GPT-Researcher evaluation with {num_examples} test queries...")
         
-        # get evaluation for each example
+        # 对每个示例获取评估结果
         results = []
         for example in evaluator.examples:
             if 'problem' not in example:
@@ -149,7 +149,7 @@ async def main(num_examples: int):
         if not results:
             raise ValueError("No results generated")
             
-        # Print summary for any number of examples
+        # 打印任意示例数下的汇总
         if num_examples > 0:  # Changed from > 1
             print("\n=== Evaluation Summary ===")
             print(f"Total queries tested: {len(evaluator.examples)}")
@@ -158,7 +158,7 @@ async def main(num_examples: int):
             print(f"Failed queries: {len(evaluator.examples) - successful}")
             
             if successful > 0:
-                # Count the different grades
+                # 统计不同等级的个数
                 correct = sum(1 for r in results if r.get('evaluation_grade') == "CORRECT")
                 incorrect = sum(1 for r in results if r.get('evaluation_grade') == "INCORRECT")
                 not_attempted = sum(1 for r in results if r.get('evaluation_grade') == "NOT_ATTEMPTED")
@@ -171,27 +171,27 @@ async def main(num_examples: int):
                     "answer_rate": (correct + incorrect) / successful,
                 }
                 
-                # Debug output
+                # 调试输出
                 print("\nDebug counts:")
                 print(f"Total successful: {successful}")
                 print(f"CORRECT: {correct}")
                 print(f"INCORRECT: {incorrect}")
                 print(f"NOT_ATTEMPTED: {not_attempted}")
                 
-                # Calculate accuracy and F1
+                # 计算准确率与 F1
                 metrics["accuracy"] = (
                     correct / (correct + incorrect)  # Accuracy among attempted answers
                     if (correct + incorrect) > 0
                     else 0
                 )
                 
-                # Precision = correct / attempted
+                # 精确率 = 正确数 / 已作答数
                 precision = correct / (correct + incorrect) if (correct + incorrect) > 0 else 0
                 
-                # Recall = correct / total
+                # 召回率 = 正确数 / 总数
                 recall = correct / successful if successful > 0 else 0
                 
-                # F1 = 2 * (precision * recall) / (precision + recall)
+                # F1 = 2 * (精确率 * 召回率) / (精确率 + 召回率)
                 metrics["f1"] = (
                     2 * (precision * recall) / (precision + recall)
                     if (precision + recall) > 0
@@ -212,7 +212,7 @@ async def main(num_examples: int):
                 print(f"Average cost per query: ${total_cost/successful:.4f}")
                 print(f"Latency — avg: {avg_latency:.1f}s  p50: {p50_latency:.1f}s  p95: {p95_latency:.1f}s")
 
-                # Write structured JSON log
+                # 写入结构化的 JSON 日志
                 run_metadata = {
                     "timestamp": run_timestamp,
                     "git_commit": get_git_commit(),

@@ -6,15 +6,15 @@ from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 
-# Maximum characters of raw_content to embed per document.
-# Large documents (e.g. scraped PDFs) can exceed embedding API token limits
-# (e.g. OpenAI's 300 000 token-per-request cap) when all chunks are sent at once.
-# Defaults to 50 000 chars (~12 500 tokens); override with MAX_CONTENT_CHARS env var.
+# 每个文档用于嵌入的 raw_content 最大字符数。
+# 大文档（如抓取的 PDF）一次性发送所有分块时可能超出嵌入 API 的
+# token 限制（如 OpenAI 每请求 30 万 token 的上限）。
+# 默认 50 000 字符（约 12 500 token）；可通过 MAX_CONTENT_CHARS 环境变量覆盖。
 _MAX_CONTENT_CHARS = int(os.environ.get("MAX_CONTENT_CHARS", 50000))
 
 
 class SearchAPIRetriever(BaseRetriever):
-    """Search API retriever."""
+    """搜索 API 检索器。"""
     pages: List[Dict] = []
 
     def _get_relevant_documents(
@@ -23,9 +23,9 @@ class SearchAPIRetriever(BaseRetriever):
 
         docs = [
             Document(
-                # ``raw_content`` may be explicitly None (the scraper sets it to
-                # None for pages that failed to scrape), and slicing None raises
-                # TypeError. Coerce to a string before truncating.
+                # ``raw_content`` 可能被显式设为 None（抓取器对抓取失败的
+                # 页面设为 None），对 None 切片会抛出 TypeError。
+                # 截断前先强制转换为字符串。
                 page_content=(page.get("raw_content") or "")[:_MAX_CONTENT_CHARS],
                 metadata={
                     "title": page.get("title", ""),
@@ -39,12 +39,12 @@ class SearchAPIRetriever(BaseRetriever):
 
 class SectionRetriever(BaseRetriever):
     """
-    SectionRetriever:
-    This class is used to retrieve sections while avoiding redundant subtopics.
+    SectionRetriever：
+    此类用于检索章节，同时避免冗余的子主题。
     """
     sections: List[Dict] = []
     """
-    sections example:
+    sections 示例：
     [
         {
             "section_title": "Example Title",
@@ -65,7 +65,7 @@ class SectionRetriever(BaseRetriever):
                     "section_title": page.get("section_title", ""),
                 },
             )
-            for page in self.sections  # Changed 'self.pages' to 'self.sections'
+            for page in self.sections  # 将 'self.pages' 改为 'self.sections'
         ]
 
         return docs

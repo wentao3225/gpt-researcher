@@ -27,9 +27,9 @@ class OnlineDocumentLoader:
             pages = await self._download_and_process(url)
             for page in pages:
                 if page.page_content:
-                    # Loaders occasionally omit metadata["source"] (custom loaders,
-                    # some HTML partitions). Prefer source, then fall back to path,
-                    # so the url stays a string the way DocumentLoader keeps it.
+                    # 加载器偶尔会省略 metadata["source"]（自定义加载器、
+                    # 某些 HTML 分区）。优先用 source，然后回退到路径，
+                    # 使 url 保持为字符串，与 DocumentLoader 的做法一致。
                     meta = getattr(page, "metadata", None) or {}
                     source = meta.get("source") or meta.get("file_path") or ""
                     docs.append({
@@ -44,7 +44,7 @@ class OnlineDocumentLoader:
 
     async def _download_and_process(self, url: str) -> list:
         try:
-            # Reject SSRF / local-file targets before issuing the request.
+            # 在发出请求之前拒绝 SSRF / 本地文件目标。
             try:
                 validate_url(url)
             except UnsafeURLError as e:
@@ -105,6 +105,6 @@ class OnlineDocumentLoader:
 
     @staticmethod
     def _get_extension(url: str) -> str:
-        # Only the URL path identifies the document type. Query strings and
-        # fragments (e.g. PDF page anchors) must not become part of the suffix.
+        # 只有 URL 路径能标识文档类型。查询字符串和片段
+        # （如 PDF 页面锚点）不能成为后缀的一部分。
         return os.path.splitext(urlsplit(url).path)[1].lower()

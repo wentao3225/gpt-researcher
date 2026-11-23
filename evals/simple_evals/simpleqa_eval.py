@@ -103,12 +103,12 @@ class SimpleQAEval:
         """Initialize the evaluator with a grader model and number of examples."""
         self.grader_model = grader_model
         
-        # Load all examples from CSV
+        # 从 CSV 加载全部示例
         csv_url = "https://openaipublic.blob.core.windows.net/simple-evals/simple_qa_test_set.csv"
         df = pandas.read_csv(csv_url)
         all_examples = df.to_dict('records')
         
-        # Randomly select num_examples without replacement
+        # 无放回地随机抽取 num_examples 条
         if num_examples > len(all_examples):
             print(f"Warning: Requested {num_examples} examples but only {len(all_examples)} available")
             num_examples = len(all_examples)
@@ -124,7 +124,7 @@ class SimpleQAEval:
         
         grade = self.grade_response(problem, correct_answer, predicted_answer)
         
-        # Calculate metrics based on grade
+        # 根据等级计算指标
         metrics = {
             "grade": grade,
             "is_correct": 1.0 if grade == "CORRECT" else 0.0,
@@ -133,7 +133,7 @@ class SimpleQAEval:
         }
         
         return {
-            "score": metrics["is_correct"],  # Score is 1.0 for CORRECT, 0.0 otherwise
+            "score": metrics["is_correct"],  # CORRECT 为 1.0，其余为 0.0
             "metrics": {"grade": grade},
             "html": "",
             "convo": [{"role": "evaluator", "content": problem},
@@ -158,15 +158,15 @@ class SimpleQAEval:
         response = self.grader_model.invoke(messages)
         response_text = response.content.strip()
         
-        # Convert letter response to grade string
+        # 把字母回答转换为等级字符串
         if response_text in CHOICE_LETTERS:
             grade = CHOICE_LETTER_TO_STRING[response_text]
         else:
-            # Fallback for direct string responses
+            # 针对直接返回字符串的降级处理
             for grade in CHOICE_STRINGS:
                 if grade in response_text:
                     return grade
-            grade = "NOT_ATTEMPTED"  # Default if no grade found
+            grade = "NOT_ATTEMPTED"  # 找不到等级时的默认值
             
         print(f"\nGrade: {grade}")
         return grade 

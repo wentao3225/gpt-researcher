@@ -1,7 +1,7 @@
-"""Image generator skill for GPT Researcher.
+"""GPT Researcher 的图片生成技能。
 
-This module provides the ImageGenerator class that handles generating
-contextually relevant images for research reports using AI image generation.
+此模块提供 ImageGenerator 类，处理使用 AI 图片生成
+为研究报告生成上下文相关的图片。
 """
 
 import asyncio
@@ -20,23 +20,22 @@ logger = logging.getLogger(__name__)
 
 
 class ImageGenerator:
-    """Generates contextually relevant images for research reports.
+    """为研究报告生成上下文相关的图片。
     
-    This class analyzes report content to identify sections that would
-    benefit from visual illustrations and generates images using AI
-    image generation models.
+    此类分析报告内容，识别能从视觉插图中
+    受益的章节，并使用 AI 图片生成模型生成图片。
     
-    Attributes:
-        researcher: The parent GPTResearcher instance.
-        image_provider: The image generation provider.
-        max_images: Maximum number of images to generate per report.
+    属性：
+        researcher: 上级 GPTResearcher 实例。
+        image_provider: 图片生成提供者。
+        max_images: 每份报告可生成的最大图片数量。
     """
     
     def __init__(self, researcher):
-        """Initialize the ImageGenerator.
+        """初始化 ImageGenerator。
         
-        Args:
-            researcher: The GPTResearcher instance that owns this generator.
+        参数：
+            researcher: 拥有此生成器的 GPTResearcher 实例。
         """
         self.researcher = researcher
         self.cfg = researcher.cfg
@@ -44,16 +43,16 @@ class ImageGenerator:
         self.max_images = getattr(self.cfg, 'image_generation_max_images', 3)
         self.generated_images: List[Dict[str, Any]] = []
         
-        # Initialize image provider if configured
+        # 如果已配置则初始化图片提供者
         self._init_provider()
     
     def _init_provider(self):
-        """Initialize the image generation provider from config."""
+        """从配置初始化图片生成提供者。"""
         try:
-            # Config._set_attributes() stores every key with key.lower(), so the
-            # uppercase names never resolve and `enabled` was always the default
-            # False -- the feature could not be switched on. Matches the
-            # lowercase reads already used for max_images / style in this class.
+            # Config._set_attributes() 以 key.lower() 存储每个键，因此
+            # 大写名称永远不会解析，`enabled` 以前总是默认 False
+            # —— 功能无法打开。与此类中 max_images / style
+            # 已使用的读取方式一致（小写）。
             enabled = getattr(self.cfg, 'image_generation_enabled', False)
             if not enabled:
                 return
@@ -73,10 +72,10 @@ class ImageGenerator:
             self.image_provider = None
 
     def is_enabled(self) -> bool:
-        """Check if image generation is enabled and available.
+        """检查图片生成是否已启用且可用。
         
-        Returns:
-            True if image generation can be used.
+        返回：
+            如果可以使用图片生成则返回 True。
         """
         return self.image_provider is not None and self.image_provider.is_available()
 
@@ -86,19 +85,18 @@ class ImageGenerator:
         query: str,
         research_id: str = "",
     ) -> List[Dict[str, Any]]:
-        """Plan and pre-generate images based on research context.
+        """基于研究上下文规划并预生成图片。
         
-        This method analyzes the research context to identify 2-3 concepts
-        that would benefit from visual illustrations, then generates them
-        in parallel BEFORE report writing begins.
+        此方法分析研究上下文，识别 2-3 个能从视觉插图中
+        受益的概念，然后在撰写报告开始之前并行生成它们。
         
-        Args:
-            context: The accumulated research context.
-            query: The main research query.
-            research_id: Optional research ID for file organization.
+        参数：
+            context: 累积的研究上下文。
+            query: 主要的研究查询。
+            research_id: 可选的研究 ID，用于文件组织。
             
-        Returns:
-            List of generated image info dictionaries with URLs ready to embed.
+        返回：
+            包含 URL、可嵌入的生成图片信息字典列表。
         """
         if not self.is_enabled():
             logger.info("Image generation is not enabled, skipping pre-generation")
@@ -112,7 +110,7 @@ class ImageGenerator:
                 self.researcher.websocket,
             )
         
-        # Step 1: Use LLM to identify best visualization opportunities
+        # 步骤 1：使用 LLM 识别最佳可视化机会
         image_concepts = await self._plan_image_concepts(context, query)
         
         if not image_concepts:
@@ -127,11 +125,11 @@ class ImageGenerator:
                 self.researcher.websocket,
             )
         
-        # Step 2: Generate all images in parallel
+        # 步骤 2：并行生成所有图片
         image_style = getattr(self.cfg, 'image_generation_style', 'dark')
         
         async def generate_single_image(concept: Dict[str, Any], index: int) -> Optional[Dict[str, Any]]:
-            """Generate a single image from a concept."""
+            """从概念生成单张图片。"""
             try:
                 if self.researcher.verbose:
                     await stream_output(
@@ -159,11 +157,11 @@ class ImageGenerator:
                 logger.error(f"Failed to generate image for '{concept['title']}': {e}")
             return None
         
-        # Generate all images in parallel
+        # 并行生成所有图片
         tasks = [generate_single_image(concept, i) for i, concept in enumerate(image_concepts)]
         results = await asyncio.gather(*tasks)
         
-        # Filter out failed generations
+        # 过滤生成失败项
         generated_images = [img for img in results if img is not None]
         self.generated_images = generated_images
         
@@ -190,16 +188,16 @@ class ImageGenerator:
         context: str,
         query: str,
     ) -> List[Dict[str, Any]]:
-        """Use LLM to identify the best visualization opportunities from research context.
+        """使用 LLM 从研究上下文中识别最佳可视化机会。
         
-        Args:
-            context: The research context to analyze.
-            query: The main research query.
+        参数：
+            context: 要分析的研究上下文。
+            query: 主要的研究查询。
             
-        Returns:
-            List of image concept dictionaries with title, prompt, and section_hint.
+        返回：
+            带 title、prompt 和 section_hint 的图片概念字典列表。
         """
-        # Truncate context if too long
+        # 上下文过长则截断
         max_context_length = 6000
         truncated_context = context[:max_context_length] if len(context) > max_context_length else context
         
@@ -244,18 +242,18 @@ Return 2-3 visualization concepts as a JSON array:"""
                 ],
                 temperature=0.4,
                 llm_provider=self.cfg.fast_llm_provider,
-                max_tokens=4000,  # headroom for reasoning tokens on reasoning models
+                max_tokens=4000,  # 为推理模型的推理 token 预留余量
                 llm_kwargs=self.cfg.llm_kwargs,
                 cost_callback=self.researcher.add_costs,
             )
             
-            # Parse JSON response (models often fence/preamble JSON; match deep_research)
+            # 解析 JSON 响应（模型经常给 JSON 加围栏/前言；与 deep_research 一致）
             concepts = json_repair.loads(response)
             if not isinstance(concepts, list):
                 logger.error("Image planning response was not a JSON array")
                 return []
 
-            # Validate and limit to max_images
+            # 校验并限制到 max_images
             valid_concepts = []
             for concept in concepts[:self.max_images]:
                 if isinstance(concept, dict) and 'title' in concept and 'prompt' in concept:
@@ -276,29 +274,29 @@ Return 2-3 visualization concepts as a JSON array:"""
         report: str,
         query: str,
     ) -> List[Dict[str, Any]]:
-        """Analyze a report to identify sections that would benefit from images.
+        """分析报告，识别能从图片中受益的章节。
         
-        Uses LLM to identify 2-3 key concepts or sections in the report
-        that would be enhanced by visual illustrations.
+        使用 LLM 识别报告中 2-3 个将从视觉插图中
+        受益的关键概念或章节。
         
-        Args:
-            report: The markdown report text.
-            query: The original research query.
+        参数：
+            report: Markdown 报告文本。
+            query: 原始研究查询。
             
-        Returns:
-            List of dictionaries with section info and suggested image prompts.
+        返回：
+            带章节信息和建议图片提示词的字典列表。
         """
         if not self.is_enabled():
             return []
         
-        # Extract sections from the report
+        # 从报告中提取章节
         sections = self._extract_sections(report)
         
         if not sections:
             logger.warning("No sections found in report for image analysis")
             return []
         
-        # Use LLM to identify best sections for images
+        # 使用 LLM 识别最适合配图的章节
         try:
             analysis_prompt = self._build_analysis_prompt(query, sections)
             
@@ -312,11 +310,11 @@ Return 2-3 visualization concepts as a JSON array:"""
                 llm_provider=self.cfg.fast_llm_provider,
                 stream=False,
                 websocket=None,
-                max_tokens=4000,  # headroom for reasoning tokens on reasoning models
+                max_tokens=4000,  # 为推理模型的推理 token 预留余量
                 llm_kwargs=self.cfg.llm_kwargs,
             )
             
-            # Parse the response
+            # 解析响应
             image_suggestions = self._parse_analysis_response(response, sections)
             return image_suggestions[:self.max_images]
             
@@ -325,13 +323,13 @@ Return 2-3 visualization concepts as a JSON array:"""
             return []
     
     def _extract_sections(self, report: str) -> List[Dict[str, Any]]:
-        """Extract sections from a markdown report.
+        """从 Markdown 报告中提取章节。
         
-        Args:
-            report: The markdown report text.
+        参数：
+            report: Markdown 报告文本。
             
-        Returns:
-            List of section dictionaries with header, content, and position.
+        返回：
+            带 header、content 和 position 的章节字典列表。
         """
         sections = []
         lines = report.split('\n')
@@ -340,11 +338,11 @@ Return 2-3 visualization concepts as a JSON array:"""
         section_start = 0
         
         for i, line in enumerate(lines):
-            # Check for headers (## or ###)
+            # 检查标题（## 或 ###）
             header_match = re.match(r'^(#{2,3})\s+(.+)$', line)
             
             if header_match:
-                # Save previous section
+                # 保存前一章节
                 if current_section:
                     sections.append({
                         "header": current_section,
@@ -353,14 +351,14 @@ Return 2-3 visualization concepts as a JSON array:"""
                         "end_line": i - 1,
                     })
                 
-                # Start new section
+                # 开始新章节
                 current_section = header_match.group(2)
                 current_content = []
                 section_start = i
             elif current_section:
                 current_content.append(line)
         
-        # Don't forget the last section
+        # 不要忘记最后一节
         if current_section:
             sections.append({
                 "header": current_section,
@@ -376,14 +374,14 @@ Return 2-3 visualization concepts as a JSON array:"""
         query: str,
         sections: List[Dict[str, Any]],
     ) -> str:
-        """Build prompt for LLM to analyze which sections need images.
+        """构建提示词，让 LLM 分析哪些章节需要图片。
         
-        Args:
-            query: The research query.
-            sections: List of extracted sections.
+        参数：
+            query: 研究查询。
+            sections: 提取的章节列表。
             
-        Returns:
-            The analysis prompt string.
+        返回：
+            分析提示词字符串。
         """
         sections_text = "\n\n".join([
             f"### Section {i+1}: {s['header']}\n{s['content'][:500]}..."
@@ -428,14 +426,14 @@ Return ONLY the JSON, no additional text."""
         response: str,
         sections: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        """Parse the LLM's analysis response.
+        """解析 LLM 的分析响应。
         
-        Args:
-            response: The LLM response text.
-            sections: The original sections list.
+        参数：
+            response: LLM 响应文本。
+            sections: 原始章节列表。
             
-        Returns:
-            List of image suggestion dictionaries.
+        返回：
+            图片建议字典列表。
         """
         try:
             data = json_repair.loads(response)
@@ -447,12 +445,12 @@ Return ONLY the JSON, no additional text."""
             if not isinstance(suggestions, list):
                 return []
 
-            # Enrich with section data
+            # 用章节数据充实
             enriched = []
             for s in suggestions:
                 if not isinstance(s, dict):
                     continue
-                section_num = s.get("section_number", 0) - 1  # Convert to 0-indexed
+                section_num = s.get("section_number", 0) - 1  # 转为 0 索引
                 if 0 <= section_num < len(sections):
                     section = sections[section_num]
                     enriched.append({
@@ -475,24 +473,24 @@ Return ONLY the JSON, no additional text."""
         query: str,
         research_id: str = "",
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Generate images and embed them in the report.
+        """生成图片并嵌入报告。
         
-        This is the main method that orchestrates the full image generation
-        workflow for a research report.
+        这是编排研究报告完整图片生成工作流的
+        主要方法。
         
-        Args:
-            report: The markdown report text.
-            query: The original research query.
-            research_id: Optional research ID for file organization.
+        参数：
+            report: Markdown 报告文本。
+            query: 原始研究查询。
+            research_id: 可选的研究 ID，用于文件组织。
             
-        Returns:
-            Tuple of (modified report with embedded images, list of generated images).
+        返回：
+            （带嵌入图片的修改后报告, 生成的图片列表）元组。
         """
         if not self.is_enabled():
             logger.info("Image generation is not enabled, skipping")
             return report, []
         
-        # Notify about image generation starting
+        # 通知图片生成开始
         if self.researcher.verbose:
             await stream_output(
                 "logs",
@@ -501,7 +499,7 @@ Return ONLY the JSON, no additional text."""
                 self.researcher.websocket,
             )
         
-        # Analyze report for image opportunities
+        # 分析报告以寻找图片机会
         suggestions = await self.analyze_report_for_images(report, query)
         
         if not suggestions:
@@ -523,7 +521,7 @@ Return ONLY the JSON, no additional text."""
                 self.researcher.websocket,
             )
         
-        # Generate images for each suggestion
+        # 为每条建议生成图片
         generated_images = []
         for i, suggestion in enumerate(suggestions):
             if self.researcher.verbose:
@@ -564,7 +562,7 @@ Return ONLY the JSON, no additional text."""
                         self.researcher.websocket,
                     )
         
-        # Embed images in the report
+        # 将图片嵌入报告
         if generated_images:
             report = self._embed_images_in_report(report, generated_images, suggestions)
             self.generated_images = generated_images
@@ -577,7 +575,7 @@ Return ONLY the JSON, no additional text."""
                     self.researcher.websocket,
                 )
                 
-                # Send generated images through WebSocket
+                # 通过 WebSocket 发送生成的图片
                 await stream_output(
                     "generated_images",
                     "inline_images",
@@ -595,37 +593,37 @@ Return ONLY the JSON, no additional text."""
         images: List[Dict[str, Any]],
         suggestions: List[Dict[str, Any]],
     ) -> str:
-        """Embed generated images into the report markdown.
+        """将生成的图片嵌入报告 Markdown。
         
-        Args:
-            report: The original report markdown.
-            images: List of generated image info.
-            suggestions: Original suggestions with section info.
+        参数：
+            report: 原始报告 Markdown。
+            images: 生成的图片信息列表。
+            suggestions: 带章节信息的原始建议。
             
-        Returns:
-            Modified report with embedded images.
+        返回：
+            带嵌入图片的修改后报告。
         """
         lines = report.split('\n')
         
-        # Create a mapping of section headers to images
+        # 创建章节标题到图片的映射
         section_to_image = {}
         for img, sug in zip(images, suggestions):
             section_to_image[sug["section_header"]] = img
         
-        # Find section headers and insert images after them
+        # 找到章节标题并在其后插入图片
         modified_lines = []
         i = 0
         while i < len(lines):
             line = lines[i]
             modified_lines.append(line)
             
-            # Check if this is a header that needs an image
+            # 检查这是否需要图片的标题
             header_match = re.match(r'^(#{2,3})\s+(.+)$', line)
             if header_match:
                 header_text = header_match.group(2)
                 if header_text in section_to_image:
                     img = section_to_image[header_text]
-                    # Insert image after the header with a blank line
+                    # 在标题后插入图片并留空行
                     image_markdown = f"\n![{img['alt_text']}]({img['url']})\n"
                     modified_lines.append(image_markdown)
             
@@ -634,10 +632,10 @@ Return ONLY the JSON, no additional text."""
         return '\n'.join(modified_lines)
     
     def get_generated_images(self) -> List[Dict[str, Any]]:
-        """Get the list of generated images.
+        """获取已生成图片列表。
         
-        Returns:
-            List of generated image info dictionaries.
+        返回：
+            生成的图片信息字典列表。
         """
         return self.generated_images
 
@@ -647,25 +645,26 @@ Return ONLY the JSON, no additional text."""
         query: str,
         research_id: str = "",
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Process [IMAGE: description] placeholders in the report and generate images.
+        """处理报告中的 [IMAGE: description] 占位符并生成图片。
         
-        This method finds all image placeholders in the report, generates images
-        for each one, and replaces the placeholders with actual markdown images.
+        此方法找到报告中所有图片占位符，为每个
+        占位符生成图片，并把占位符替换为实际的
+        Markdown 图片。
         
-        Args:
-            report: The markdown report text with [IMAGE: ...] placeholders.
-            query: The original research query (used for context).
-            research_id: Optional research ID for file organization.
+        参数：
+            report: 带 [IMAGE: ...] 占位符的 Markdown 报告文本。
+            query: 原始研究查询（用于上下文）。
+            research_id: 可选的研究 ID，用于文件组织。
             
-        Returns:
-            Tuple of (modified report with images embedded, list of generated images).
+        返回：
+            （带嵌入图片的修改后报告, 生成的图片列表）元组。
         """
         if not self.is_enabled():
-            # If image generation is not enabled, just remove the placeholders
+            # 图片生成未启用时，直接移除占位符
             report = re.sub(r'\[IMAGE:\s*[^\]]+\]', '', report)
             return report, []
         
-        # Find all image placeholders
+        # 找到所有图片占位符
         placeholder_pattern = r'\[IMAGE:\s*([^\]]+)\]'
         placeholders = list(re.finditer(placeholder_pattern, report))
         
@@ -673,7 +672,7 @@ Return ONLY the JSON, no additional text."""
             logger.info("No image placeholders found in report")
             return report, []
         
-        # Limit to max_images
+        # 限制到 max_images
         placeholders = placeholders[:self.max_images]
         
         if self.researcher.verbose:
@@ -700,14 +699,14 @@ Return ONLY the JSON, no additional text."""
                 )
             
             try:
-                # Get image style from config (default to "dark" for app theme)
+                # 从配置获取图片风格（默认为匹配应用主题的 "dark"）
                 image_style = getattr(self.cfg, 'image_generation_style', 'dark')
                 logger.info(f"Using image style: {image_style}")
                 
-                # Generate the image with dark mode styling
+                # 用暗色模式样式生成图片
                 images = await self.image_provider.generate_image(
                     prompt=image_description,
-                    context=query,  # Use query as context
+                    context=query,  # 使用查询作为上下文
                     research_id=research_id,
                     num_images=1,
                     style=image_style,
@@ -718,8 +717,8 @@ Return ONLY the JSON, no additional text."""
                     image_info["description"] = image_description
                     generated_images.append(image_info)
                     
-                    # Create markdown replacement with absolute path for PDF compatibility
-                    # Use the absolute URL for proper rendering in PDF/DOCX
+                    # 创建 Markdown 替换，使用绝对路径以兼容 PDF
+                    # 使用绝对 URL 以在 PDF/DOCX 中正确渲染
                     markdown_image = f"\n\n![{image_info['alt_text']}]({image_info['url']})\n\n"
                     replacements.append((original_text, markdown_image))
                     
@@ -731,13 +730,13 @@ Return ONLY the JSON, no additional text."""
                             self.researcher.websocket,
                         )
                 else:
-                    # Remove placeholder if image generation failed
+                    # 图片生成失败时移除占位符
                     replacements.append((original_text, ""))
                     logger.warning(f"No image generated for: {image_description[:50]}")
                     
             except Exception as e:
                 logger.error(f"Failed to generate image for '{image_description[:50]}': {e}")
-                # Remove the failed placeholder
+                # 移除失败的占位符
                 replacements.append((original_text, ""))
                 
                 if self.researcher.verbose:
@@ -748,7 +747,7 @@ Return ONLY the JSON, no additional text."""
                         self.researcher.websocket,
                     )
         
-        # Apply all replacements
+        # 应用所有替换
         modified_report = report
         for original, replacement in replacements:
             modified_report = modified_report.replace(original, replacement, 1)
@@ -763,7 +762,7 @@ Return ONLY the JSON, no additional text."""
                 self.researcher.websocket,
             )
             
-            # Send generated images through WebSocket
+            # 通过 WebSocket 发送生成的图片
             await stream_output(
                 "generated_images",
                 "inline_images",

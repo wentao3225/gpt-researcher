@@ -1,17 +1,17 @@
 """
-Metric suite — concrete BaseMetric implementations + the evaluate() entry point.
+指标套件 —— 具体的 BaseMetric 实现 + evaluate() 入口。
 --------------------------------------------------------------------------------
-Each class is a thin wrapper over a function in metrics.py, standardizing I/O
-into a MetricResult (score is always higher = better; raw detail kept in
-`breakdown`). Keeping the raw functions separate means the existing unit tests
-and perturbation checks remain valid — this layer only standardizes structure
-and attaches the concept-alignment metadata (group / aligned_with).
+每个类都是 metrics.py 中某个函数的薄封装，把 I/O 统一为
+MetricResult（score 始终为“越高越好”；原始明细保留在
+`breakdown` 中）。把原始函数保持独立意味着现有的单元测试
+和扰动检查依然有效 —— 本层只负责统一结构，
+并附加概念对齐元数据（group / aligned_with）。
 
-Concept ontology (see quality_eval/README.md):
-    Faithfulness      → unsupported_claim            (aligns RAGAS Faithfulness)
-    Answer Relevancy  → subtopic_coverage            (aligns RAGAS answer relevancy)
-    Source Quality    → source_authority, diversity  (autonomous-agent extension)
-    Citation          → citation_faithfulness        (aligns ALCE citation precision)
+概念本体（见 quality_eval/README.md）：
+    Faithfulness（忠实度）  → unsupported_claim            （对齐 RAGAS Faithfulness）
+    Answer Relevancy（答案相关性） → subtopic_coverage      （对齐 RAGAS answer relevancy）
+    Source Quality（来源质量）     → source_authority, diversity（自主智能体扩展）
+    Citation（引用）       → citation_faithfulness        （对齐 ALCE 引用精确度）
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from evals.quality_eval.base import BaseMetric, EvalSample, MetricResult, Group
 
 
 # ---------------------------------------------------------------------------
-# Citation  (aligns ALCE citation precision — structural)
+# 引用（对齐 ALCE 引用精确度 —— 结构性）
 # ---------------------------------------------------------------------------
 
 class CitationFaithfulnessMetric(BaseMetric):
@@ -43,7 +43,7 @@ class CitationFaithfulnessMetric(BaseMetric):
 
 
 # ---------------------------------------------------------------------------
-# Source Quality  (autonomous-agent extension)
+# 来源质量（自主智能体扩展）
 # ---------------------------------------------------------------------------
 
 class SourceDiversityMetric(BaseMetric):
@@ -79,7 +79,7 @@ class SourceAuthorityMetric(BaseMetric):
 
 
 # ---------------------------------------------------------------------------
-# Answer Relevancy  (aligns RAGAS answer relevancy — impl measures completeness)
+# 答案相关性（对齐 RAGAS answer relevancy —— 实现衡量的是完整度）
 # ---------------------------------------------------------------------------
 
 class SubtopicCoverageMetric(BaseMetric):
@@ -102,7 +102,7 @@ class SubtopicCoverageMetric(BaseMetric):
 
 
 # ---------------------------------------------------------------------------
-# Faithfulness  (aligns RAGAS Faithfulness)
+# 忠实度（对齐 RAGAS Faithfulness）
 # ---------------------------------------------------------------------------
 
 class UnsupportedClaimMetric(BaseMetric):
@@ -127,11 +127,11 @@ class UnsupportedClaimMetric(BaseMetric):
 
 
 # ---------------------------------------------------------------------------
-# Registry + entry point
+# 注册表 + 入口
 # ---------------------------------------------------------------------------
 
 def default_metrics(run_subtopic: bool = True, run_unsupported: bool = True) -> list[BaseMetric]:
-    """Zero-cost metrics always; the two LLM metrics gated by flags (ordered cheap→expensive)."""
+    """零成本指标始终运行；两个 LLM 指标由开关控制（按“便宜 → 昂贵”排序）。"""
     suite: list[BaseMetric] = [
         CitationFaithfulnessMetric(),
         SourceDiversityMetric(),

@@ -10,12 +10,12 @@ from ..utils.llm import create_chat_completion
 
 
 def _normalize_sub_queries(parsed: Any, fallback_query: str) -> List[str]:
-    """Coerce a parsed LLM response into a flat list of query strings.
+    """将解析出的 LLM 响应规范化为扁平的查询字符串列表。
 
-    ``json_repair.loads`` may return a list, a dict (e.g. ``{"queries": [...]}``
-    or a single ``{"query": "..."}``), a bare string, or ``None`` when the model
-    does not return clean JSON. Callers expect a ``list[str]`` and otherwise crash
-    on ``.append`` / iteration, so normalize defensively here.
+    模型未返回干净 JSON 时，``json_repair.loads`` 可能返回列表、字典
+    （如 ``{"queries": [...]}`` 或单个 ``{"query": "..."}``）、裸字符串
+    或 ``None``。调用方期望 ``list[str]``，否则会在 ``.append`` 或迭代时
+    崩溃，因此这里做防御性规范化。
     """
     if isinstance(parsed, dict):
         for key in ("queries", "sub_queries", "subQueries", "items"):
@@ -24,7 +24,7 @@ def _normalize_sub_queries(parsed: Any, fallback_query: str) -> List[str]:
                 parsed = value
                 break
         else:
-            # Single-query dict like {"query": "..."} or unrecognized shape.
+            # 单查询字典如 {"query": "..."} 或无法识别的形状。
             single = parsed.get("query")
             parsed = [single] if isinstance(single, str) else []
 
@@ -49,26 +49,26 @@ async def get_search_results(
     max_results: int | None = None,
 ) -> List[Dict[str, Any]]:
     """
-    Get web search results for a given query.
+    为给定查询获取网络搜索结果。
 
-    Args:
-        query: The search query
-        retriever: The retriever instance
-        query_domains: Optional list of domains to search
-        researcher: The researcher instance (needed for MCP retrievers)
-        max_results: Optional cap on the number of results
+    参数：
+        query: 搜索查询
+        retriever: 检索器实例
+        query_domains: 可选的搜索域名列表
+        researcher: 研究员实例（MCP 检索器需要）
+        max_results: 可选的结果数量上限
 
-    Returns:
-        A list of search results
+    返回：
+        搜索结果列表
     """
     import asyncio
 
-    # Check if this is an MCP retriever and pass the researcher instance
+    # 检查是否为 MCP 检索器并传入研究员实例
     if "mcpretriever" in retriever.__name__.lower():
         search_retriever = retriever(
             query, 
             query_domains=query_domains,
-            researcher=researcher  # Pass researcher instance for MCP retrievers
+            researcher=researcher  # 为 MCP 检索器传入研究员实例
         )
     else:
         search_retriever = retriever(query, query_domains=query_domains)
@@ -77,7 +77,7 @@ async def get_search_results(
     if max_results is not None:
         search_kwargs["max_results"] = max_results
 
-    # Retriever searches are blocking HTTP calls; keep the event loop free
+    # 检索器搜索是阻塞的 HTTP 调用；保持事件循环空闲
     return await asyncio.to_thread(search_retriever.search, **search_kwargs)
 
 async def generate_sub_queries(
@@ -91,20 +91,20 @@ async def generate_sub_queries(
     **kwargs
 ) -> List[str]:
     """
-    Generate sub-queries using the specified LLM model.
+    使用指定的 LLM 模型生成子查询。
 
-    Args:
-        query: The original query
-        parent_query: The parent query
-        report_type: The type of report
-        max_iterations: Maximum number of research iterations
-        context: Search results context
-        cfg: Configuration object
-        cost_callback: Callback for cost calculation
-        prompt_family: Family of prompts
+    参数：
+        query: 原始查询
+        parent_query: 父查询
+        report_type: 报告类型
+        max_iterations: 最大研究迭代次数
+        context: 搜索结果上下文
+        cfg: 配置对象
+        cost_callback: 用于成本计算的回调
+        prompt_family: 提示词家族
 
-    Returns:
-        A list of sub-queries
+    返回：
+        子查询列表
     """
     gen_queries_prompt = prompt_family.generate_search_queries_prompt(
         query,
@@ -167,41 +167,41 @@ async def plan_research_outline(
     **kwargs
 ) -> List[str]:
     """
-    Plan the research outline by generating sub-queries.
+    通过生成子查询来规划研究大纲。
 
-    Args:
-        query: Original query
-        search_results: Initial search results
-        agent_role_prompt: Agent role prompt
-        cfg: Configuration object
-        parent_query: Parent query
-        report_type: Report type
-        cost_callback: Callback for cost calculation
-        retriever_names: Names of the retrievers being used
+    参数：
+        query: 原始查询
+        search_results: 初始搜索结果
+        agent_role_prompt: 智能体角色提示词
+        cfg: 配置对象
+        parent_query: 父查询
+        report_type: 报告类型
+        cost_callback: 用于成本计算的回调
+        retriever_names: 正在使用的检索器名称
 
-    Returns:
-        A list of sub-queries
+    返回：
+        子查询列表
     """
-    # Handle the case where retriever_names is not provided
+    # 处理未提供 retriever_names 的情况
     if retriever_names is None:
         retriever_names = []
     
-    # For MCP retrievers, we may want to skip sub-query generation
-    # Check if MCP is the only retriever or one of multiple retrievers
+    # 对 MCP 检索器，可能需要跳过子查询生成
+    # 检查 MCP 是唯一检索器还是多个检索器之一
     if retriever_names and ("mcp" in retriever_names or "MCPRetriever" in retriever_names):
         mcp_only = (len(retriever_names) == 1 and 
                    ("mcp" in retriever_names or "MCPRetriever" in retriever_names))
         
         if mcp_only:
-            # If MCP is the only retriever, skip sub-query generation
+            # 如果 MCP 是唯一检索器，跳过子查询生成
             logger.info("Using MCP retriever only - skipping sub-query generation")
-            # Return the original query to prevent additional search iterations
+            # 返回原始查询以避免额外的搜索迭代
             return [query]
         else:
-            # If MCP is one of multiple retrievers, generate sub-queries for the others
+            # 如果 MCP 是多个检索器之一，为其他检索器生成子查询
             logger.info("Using MCP with other retrievers - generating sub-queries for non-MCP retrievers")
 
-    # Generate sub-queries for research outline
+    # 为研究大纲生成子查询
     sub_queries = await generate_sub_queries(
         query,
         parent_query,

@@ -1,4 +1,4 @@
-"""MiniMax endpoints and model metadata."""
+"""MiniMax 端点与模型元数据。"""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ MINIMAX_ENDPOINTS = {
 
 MINIMAX_DEFAULT_MODEL = "MiniMax-M3.1-Flash"
 
-# Recommended models only; explicit legacy and custom model IDs remain valid.
+# 仅推荐模型；显式的旧版和自定义模型 ID 仍然有效。
 MINIMAX_MODEL_SPECS = {
     MINIMAX_DEFAULT_MODEL: {
         "context_window": 1_000_000,
@@ -54,7 +54,7 @@ MINIMAX_MODEL_SPECS = {
 
 
 def get_minimax_base_url(protocol: Literal["openai", "anthropic"]) -> str:
-    """Resolve a regional MiniMax endpoint for the requested protocol."""
+    """为请求的协议解析区域 MiniMax 端点。"""
     env_name = (
         "MINIMAX_BASE_URL"
         if protocol == "openai"

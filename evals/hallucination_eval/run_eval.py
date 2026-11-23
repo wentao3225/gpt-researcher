@@ -1,5 +1,5 @@
 """
-Script to run GPT-Researcher queries and evaluate them for hallucination.
+运行 GPT-Researcher 查询并评估其是否存在幻觉的脚本。
 """
 import json
 import logging
@@ -17,29 +17,29 @@ from gpt_researcher.utils.logging_config import get_json_handler
 
 from .evaluate import HallucinationEvaluator
 
-# Configure logging
+# 配置日志
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Load environment variables
+# 加载环境变量
 load_dotenv()
 
-# Default paths
+# 默认路径
 DEFAULT_OUTPUT_DIR = "evals/hallucination_eval/results"
 DEFAULT_QUERIES_FILE = "evals/hallucination_eval/inputs/search_queries.jsonl"
 
 class ResearchEvaluator:
-    """Runs GPT-Researcher queries and evaluates responses for hallucination."""
-    
+    """运行 GPT-Researcher 查询并评估响应是否存在幻觉。"""
+
     def __init__(self, queries_file: str = DEFAULT_QUERIES_FILE):
         """
-        Initialize the research evaluator.
-        
+        初始化研究评估器。
+
         Args:
-            queries_file: Path to JSONL file containing search queries
+            queries_file: 包含搜索查询的 JSONL 文件路径
         """
 
         self.queries_file = Path(queries_file)
@@ -47,13 +47,13 @@ class ResearchEvaluator:
         
     def load_queries(self, num_queries: Optional[int] = None) -> List[str]:
         """
-        Load and optionally sample queries from the JSONL file.
-        
+        加载查询，并可选择性地抽样。
+
         Args:
-            num_queries: Optional number of queries to randomly sample
-            
+            num_queries: 可选，随机抽样的查询数量
+
         Returns:
-            List of query strings
+            查询字符串列表
         """
         queries = []
         with open(self.queries_file) as f:
@@ -67,13 +67,13 @@ class ResearchEvaluator:
         
     async def run_research(self, query: str) -> Dict:
         """
-        Run a single query through GPT-Researcher.
-        
+        用 GPT-Researcher 运行单个查询。
+
         Args:
-            query: The search query to research
-            
+            query: 要研究的搜索查询
+
         Returns:
-            Dict containing research results and context
+            包含研究结果与上下文的字典
         """
         researcher = GPTResearcher(
             query=query,
@@ -84,7 +84,7 @@ class ResearchEvaluator:
             verbose=True
         )
         
-        # Run research and get results
+        # 运行研究并获取结果
         research_result = await researcher.conduct_research()
         report = await researcher.write_report()
         
@@ -100,20 +100,20 @@ class ResearchEvaluator:
         output_dir: Optional[str] = None
     ) -> Dict:
         """
-        Evaluate research results for hallucination.
-        
+        评估研究结果是否存在幻觉。
+
         Args:
-            research_data: Dict containing research results and context
-            output_dir: Optional directory to save evaluation results
-            
+            research_data: 包含研究结果与上下文的字典
+            output_dir: 可选，保存评估结果的目录
+
         Returns:
-            Dict containing evaluation results
+            包含评估结果的字典
         """
-        # Use default output directory if none provided
+        # 未提供时则使用默认输出目录
         if output_dir is None:
             output_dir = DEFAULT_OUTPUT_DIR
             
-        # Use the final combined context as source text
+        # 用最终合并后的上下文作为源文本
         source_text = research_data.get("context", "")
         
         if not source_text:
@@ -127,16 +127,16 @@ class ResearchEvaluator:
                 "reasoning": "Evaluation skipped - no source text available for verification"
             }
         else:
-            # Evaluate the research report for hallucination
+            # 评估研究报告是否存在幻觉
             eval_result = self.hallucination_evaluator.evaluate_response(
                 model_output=research_data["report"],
                 source_text=source_text
             )
         
-        # Save to output directory
+        # 保存到输出目录
         os.makedirs(output_dir, exist_ok=True)
-        
-        # Append to evaluation records
+
+        # 追加到评估记录
         records_file = Path(output_dir) / "evaluation_records.jsonl"
         with open(records_file, "a") as f:
             f.write(json.dumps(eval_result) + "\n")
@@ -145,19 +145,19 @@ class ResearchEvaluator:
 
 async def main(num_queries: int = 5, output_dir: str = DEFAULT_OUTPUT_DIR):
     """
-    Run evaluation on a sample of queries.
-    
+    在有抽样的一批查询上运行评估。
+
     Args:
-        num_queries: Number of queries to evaluate
-        output_dir: Directory to save results
+        num_queries: 要评估的查询数量
+        output_dir: 保存结果的目录
     """
     evaluator = ResearchEvaluator()
-    
-    # Load and sample queries
+
+    # 加载并抽取查询
     queries = evaluator.load_queries(num_queries)
     logger.info(f"Selected {len(queries)} queries for evaluation")
     
-    # Run research and evaluation for each query
+    # 对每个查询运行研究与评估
     all_results = []
     total_hallucinated = 0
     total_responses = 0
@@ -167,10 +167,10 @@ async def main(num_queries: int = 5, output_dir: str = DEFAULT_OUTPUT_DIR):
         try:
             logger.info(f"Processing query: {query}")
             
-            # Run research
+            # 运行研究
             research_data = await evaluator.run_research(query)
-            
-            # Evaluate results
+
+            # 评估结果
             eval_results = evaluator.evaluate_research(
                 research_data,
                 output_dir=output_dir
@@ -178,7 +178,7 @@ async def main(num_queries: int = 5, output_dir: str = DEFAULT_OUTPUT_DIR):
             
             all_results.append(eval_results)
             
-            # Update counters
+            # 更新计数器
             total_responses += 1
             if eval_results["is_hallucination"] is not None:
                 total_evaluated += 1
@@ -189,10 +189,10 @@ async def main(num_queries: int = 5, output_dir: str = DEFAULT_OUTPUT_DIR):
             logger.error(f"Error processing query '{query}': {str(e)}")
             continue
             
-    # Calculate hallucination rate
+    # 计算幻觉率
     hallucination_rate = (total_hallucinated / total_evaluated) if total_evaluated > 0 else None
     
-    # Save aggregate results
+    # 保存汇总结果
     aggregate_results = {
         "total_queries": len(queries),
         "successful_queries": len(all_results),
@@ -208,7 +208,7 @@ async def main(num_queries: int = 5, output_dir: str = DEFAULT_OUTPUT_DIR):
         json.dump(aggregate_results, f, indent=2)
     logger.info(f"Saved aggregate results to {aggregate_file}")
     
-    # Print summary
+    # 打印汇总
     print("\n=== Evaluation Summary ===")
     print(f"Queries processed: {len(queries)}")
     print(f"Responses evaluated: {total_evaluated}")

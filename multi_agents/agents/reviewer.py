@@ -14,7 +14,7 @@ class ReviewerAgent:
 
     async def review_draft(self, draft_state: dict):
         """
-        Review a draft article
+        审阅草稿文章
         :param draft_state:
         :return:
         """

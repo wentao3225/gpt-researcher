@@ -6,7 +6,7 @@ from multi_agents.agents.utils.llms import call_model
 
 
 class EditorAgent:
-    """Agent responsible for planning the research outline."""
+    """负责规划研究大纲的智能体。"""
 
     def __init__(self, websocket=None, stream_output=None, tone=None, headers=None):
         self.websocket = websocket

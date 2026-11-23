@@ -5,9 +5,9 @@ from bs4 import BeautifulSoup
 
 from ..utils import get_relevant_images
 
-# Module-level semaphore shared across all FireCrawl instances.
-# Limits concurrent API calls to avoid exceeding FireCrawl rate limits.
-# FireCrawl Free Tier allows 2 concurrent browsers; configurable via FIRECRAWL_CONCURRENCY.
+# 在所有 FireCrawl 实例间共享的模块级信号量。
+# 限制并发 API 调用以避免超出 FireCrawl 速率限制。
+# FireCrawl 免费层允许 2 个并发浏览器；可通过 FIRECRAWL_CONCURRENCY 配置。
 _semaphore: asyncio.Semaphore | None = None
 
 
@@ -29,8 +29,8 @@ class FireCrawl:
 
     def get_api_key(self) -> str:
         """
-        Gets the FireCrawl API key
-        Returns:
+        获取 FireCrawl API 密钥
+        返回：
         Api key (str)
         """
         try:
@@ -42,9 +42,9 @@ class FireCrawl:
 
     def get_server_url(self) -> str:
         """
-        Gets the FireCrawl server URL.
-        Default to official FireCrawl server ('https://api.firecrawl.dev').
-        Returns:
+        获取 FireCrawl 服务器 URL。
+        默认为官方 FireCrawl 服务器（'https://api.firecrawl.dev'）。
+        返回：
         server url (str)
         """
         try:
@@ -55,22 +55,22 @@ class FireCrawl:
 
     def scrape(self) -> tuple:
         """
-        This function extracts content and title from a specified link using the FireCrawl Python SDK,
-        images from the link are extracted using the functions from `gpt_researcher/scraper/utils.py`.
+        此函数使用 FireCrawl Python SDK 从指定链接提取内容和标题，
+        链接中的图片使用 `gpt_researcher/scraper/utils.py` 中的函数提取。
 
-        Returns:
-          The `scrape` method returns a tuple containing the extracted content, a list of image URLs, and
-        the title of the webpage specified by the `self.link` attribute. It uses the FireCrawl Python SDK to
-        extract and clean content from the webpage. If any exception occurs during the process, an error
-        message is printed and an empty result is returned.
+        返回：
+          `scrape` 方法返回一个元组，包含提取的内容、图片 URL 列表，
+        以及 `self.link` 属性指定的网页标题。它使用 FireCrawl Python SDK
+        提取并清理网页内容。如果过程中出现任何异常，会打印错误消息
+        并返回空结果。
         """
 
         try:
-            # Fixed: Changed from scrape_url() to scrape() to match FireCrawl SDK v4.6.0+
+            # 修复：从 scrape_url() 改为 scrape() 以匹配 FireCrawl SDK v4.6.0+
             response = self.firecrawl.scrape(url=self.link, formats=["markdown"])
 
-            # Check if the page has been scraped successfully
-            # Fixed: Access metadata attributes directly (not as dict keys)
+            # 检查页面是否已成功抓取
+            # 修复：直接访问元数据属性（而非字典键）
             if response.metadata and response.metadata.error:
                 print("Scrape failed! : " + str(response.metadata.error))
                 return "", [], ""
@@ -78,13 +78,13 @@ class FireCrawl:
                 print(f"Scrape failed! Status code: {response.metadata.status_code}")
                 return "", [], ""
 
-            # Extract the content (markdown) and title from FireCrawl response
-            # Fixed: Access attributes directly (not as dict keys)
+            # 从 FireCrawl 响应中提取内容（markdown）和标题
+            # 修复：直接访问属性（而非字典键）
             content = response.markdown if response.markdown else ""
             title = response.metadata.title if response.metadata and response.metadata.title else ""
 
-            # Optional image pass. Session may be None when FireCrawl is used
-            # outside Scraper; never attribute-error on session.get.
+            # 可选的图片提取。在 Scraper 之外使用 FireCrawl 时
+            # session 可能为 None；绝不因 session.get 抛出属性错误。
             image_urls = []
             if self.session is not None:
                 try:
@@ -106,15 +106,15 @@ class FireCrawl:
 
     async def scrape_async(self) -> tuple:
         """
-        Async version of scrape() with concurrency limiting to avoid FireCrawl API rate limits.
+        scrape() 的异步版本，带并发限制以避免 FireCrawl API 速率限制。
 
-        FireCrawl Free Tier limits concurrent browsers to 2. When deep research mode launches
-        many parallel requests, most fail silently with empty content. This method uses a shared
-        module-level semaphore so that at most FIRECRAWL_CONCURRENCY requests run simultaneously
-        across all FireCrawl instances (default: 2).
+        FireCrawl 免费层将并发浏览器限制为 2。深度研究模式启动许多并行
+        请求时，大多数会静默失败并返回空内容。此方法使用共享的模块级
+        信号量，使所有 FireCrawl 实例中同时至多有 FIRECRAWL_CONCURRENCY
+        个请求运行（默认：2）。
 
-        Returns:
-            Tuple of (content, image_urls, title) — same as scrape().
+        返回：
+            (content, image_urls, title) 元组 —— 与 scrape() 相同。
         """
         async with _get_semaphore():
             loop = asyncio.get_running_loop()

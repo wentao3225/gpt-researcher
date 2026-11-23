@@ -26,11 +26,11 @@ class PublisherAgent:
             research_data = [research_data]
         for subheader in research_data:
             if isinstance(subheader, dict):
-                # Handle dictionary case
+                # 处理字典情况
                 for key, value in subheader.items():
                     sections.append(f"{value}")
             else:
-                # Handle string case
+                # 处理字符串情况
                 sections.append(f"{subheader}")
 
         sections_text = "\n\n".join(sections)

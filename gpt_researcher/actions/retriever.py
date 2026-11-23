@@ -1,7 +1,6 @@
-"""Retriever factory and utilities for GPT Researcher.
+"""GPT Researcher 的检索器工厂与工具。
 
-This module provides functions to instantiate and manage various
-search retriever implementations.
+此模块提供实例化和管理各种搜索检索器实现的函数。
 """
 
 import logging
@@ -9,43 +8,43 @@ from importlib.metadata import entry_points
 
 logger = logging.getLogger(__name__)
 
-#: Entry-point group that third-party packages use to register retrievers.
+#: 第三方包用来注册检索器的入口点组。
 RETRIEVER_ENTRY_POINT_GROUP = "gpt_researcher.retrievers"
 
 
 def get_retriever(retriever: str):
-    """Get a retriever class by name.
+    """按名称获取检索器类。
 
-    Args:
-        retriever: The name of the retriever to get (e.g., 'google', 'tavily', 'duckduckgo').
+    参数：
+        retriever: 要获取的检索器名称（如 'google'、'tavily'、'duckduckgo'）。
 
-    Returns:
-        The retriever class if found, None otherwise.
+    返回：
+        找到时返回检索器类，否则返回 None。
 
-    Supported retrievers:
-        - google: Google Custom Search
-        - searx: SearX search engine
-        - searchapi: SearchAPI service
-        - serpapi: SerpAPI service
+    支持的检索器：
+        - google: Google 自定义搜索
+        - searx: SearX 搜索引擎
+        - searchapi: SearchAPI 服务
+        - serpapi: SerpAPI 服务
         - serper: Serper API
-        - duckduckgo: DuckDuckGo search
-        - bing: Bing search
-        - bocha: BoCha Search API
-        - brave: Brave Search API
-        - arxiv: arXiv academic search
-        - tavily: Tavily search API
-        - exa: Exa search
-        - crw: fastCRW search (Firecrawl-compatible web scraper)
-        - semantic_scholar: Semantic Scholar academic search
-        - pubmed_central: PubMed Central medical literature
-        - openalex: OpenAlex scholarly works catalog
-        - custom: Custom user-defined retriever
-        - mcp: Model Context Protocol retriever
-        - xquik: Xquik X/Twitter search
-        - getxapi: GetXAPI X/Twitter search
+        - duckduckgo: DuckDuckGo 搜索
+        - bing: Bing 搜索
+        - bocha: BoCha 搜索 API
+        - brave: Brave 搜索 API
+        - arxiv: arXiv 学术搜索
+        - tavily: Tavily 搜索 API
+        - exa: Exa 搜索
+        - crw: fastCRW 搜索（Firecrawl 兼容的网页抓取器）
+        - semantic_scholar: Semantic Scholar 学术搜索
+        - pubmed_central: PubMed Central 医学文献
+        - openalex: OpenAlex 学术著作目录
+        - custom: 用户自定义检索器
+        - mcp: Model Context Protocol 检索器
+        - xquik: Xquik X/Twitter 搜索
+        - getxapi: GetXAPI X/Twitter 搜索
 
-    Any other name is looked up among installed plugins registered under the
-    ``gpt_researcher.retrievers`` entry-point group. Built-in names always win.
+    其他名称会在已安装插件中查找，这些插件注册在
+    ``gpt_researcher.retrievers`` 入口点组下。内置名称始终优先。
     """
     match retriever:
         case "google":
@@ -138,7 +137,7 @@ def get_retriever(retriever: str):
 
 
 def _load_plugin_retriever(name: str):
-    """Load a retriever class that an installed package registered by name."""
+    """加载已安装包按名称注册的检索器类。"""
     for entry_point in entry_points(group=RETRIEVER_ENTRY_POINT_GROUP, name=name):
         try:
             return entry_point.load()
@@ -150,55 +149,55 @@ def _load_plugin_retriever(name: str):
 
 def get_retrievers(headers: dict[str, str], cfg):
     """
-    Determine which retriever(s) to use based on headers, config, or default.
+    根据请求头、配置或默认值确定要使用的检索器。
 
-    Args:
-        headers (dict): The headers dictionary
-        cfg: The configuration object
+    参数：
+        headers (dict): 请求头字典
+        cfg: 配置对象
 
-    Returns:
-        list: A list of retriever classes to be used for searching.
+    返回：
+        list: 用于搜索的检索器类列表。
     """
-    # Check headers first for multiple retrievers
+    # 先检查请求头中的多个检索器
     if headers.get("retrievers"):
         retrievers = headers.get("retrievers").split(",")
-    # If not found, check headers for a single retriever
+    # 未找到时检查请求头中的单个检索器
     elif headers.get("retriever"):
         retrievers = [headers.get("retriever")]
-    # If not in headers, check config for multiple retrievers
+    # 请求头没有时检查配置中的多个检索器
     elif cfg.retrievers:
-        # Handle both list and string formats for config retrievers
+        # 配置中的检索器同时兼容列表和字符串格式
         if isinstance(cfg.retrievers, str):
             retrievers = cfg.retrievers.split(",")
         else:
             retrievers = cfg.retrievers
-    # If not found, check config for a single retriever
+    # 未找到时检查配置中的单个检索器
     elif cfg.retriever:
         retrievers = [cfg.retriever]
-    # If still not set, use default retriever
+    # 仍未设置时使用默认检索器
     else:
         retrievers = [get_default_retriever().__name__]
 
-    # Strip whitespace from each retriever name so comma-separated lists with
-    # spaces (e.g. "tavily, exa" from a header or config) resolve correctly
-    # instead of silently falling back to the default retriever.
+    # 去除每个检索器名称的空白，使带空格的逗号分隔列表
+    # （如来自请求头或配置的 "tavily, exa"）能正确解析，
+    # 而不是静默回退到默认检索器。
     retrievers = [r.strip() for r in retrievers if r and r.strip()]
 
     if not retrievers:
         return [get_default_retriever()]
 
-    # Convert retriever names to actual retriever classes
-    # Use get_default_retriever() as a fallback for any invalid retriever names
+    # 将检索器名称转换为实际的检索器类
+    # 对无效的检索器名称使用 get_default_retriever() 作为回退
     retriever_classes = [get_retriever(r) or get_default_retriever() for r in retrievers]
     
     return retriever_classes
 
 
 def get_default_retriever():
-    """Get the default retriever class.
+    """获取默认检索器类。
 
-    Returns:
-        The TavilySearch retriever class as the default search provider.
+    返回：
+        作为默认搜索提供者的 TavilySearch 检索器类。
     """
     from gpt_researcher.retrievers import TavilySearch
 

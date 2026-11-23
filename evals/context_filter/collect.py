@@ -1,10 +1,10 @@
-"""Step 1: run each query once and record what reached the context filter.
+"""第 1 步：对每个查询只运行一次，记录进入上下文过滤器的内容。
 
-Every scraped page reaches the report through
-``ContextManager.get_similar_content_by_query(query, pages)``. This records
-each call's inputs, so ``replay.py`` can rebuild the context from the exact
-same pages with every strategy. Only the filter varies; search results and
-scraping, the noisiest parts of a run, are held fixed.
+每个抓取到的页面都通过
+``ContextManager.get_similar_content_by_query(query, pages)`` 进入报告。
+这里记录每次调用的输入，这样 ``replay.py`` 就能用完全相同的页面、
+在每种策略下重建上下文。只有过滤器会变化；搜索结果和抓取这些
+一次运行中噪声最大的部分都保持固定。
 
     python -m evals.context_filter.collect --out runs/ --concurrency 4
 """
@@ -20,8 +20,8 @@ from gpt_researcher.skills.context_manager import ContextManager
 
 HERE = Path(__file__).parent
 
-# researcher -> recorded calls. Patched once for the whole process, because
-# runs execute concurrently and per-run patch/restore would race.
+# researcher -> 已记录的调用。对整个进程只打补丁一次，
+# 因为多个运行是并发执行的，按运行打补丁/恢复会发生竞争。
 _RECORDINGS: dict[int, list] = {}
 _original = ContextManager.get_similar_content_by_query
 

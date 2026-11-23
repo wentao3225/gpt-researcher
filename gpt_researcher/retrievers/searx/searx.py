@@ -4,37 +4,33 @@ import requests
 from typing import List, Dict
 from urllib.parse import urljoin
 
-# gpt_researcher.skills.researcher._search_relevant_source_urls() treats
-# any search result whose raw_content/body exceeds 100 characters as
-# already-fetched full text -- a heuristic meant for retrievers (e.g.
-# PubMed Central) that genuinely return full article text inline. SearxNG
-# populates "body" with an ordinary search-result snippet, which routinely
-# exceeds 100 characters, so without this cap every result is wrongly
-# treated as already-fetched and the real page is never actually scraped
-# (get_source_urls() then returns [] and reports ship with zero verifiable
-# citations). Capped here, at the source, rather than patched in
-# _search_relevant_source_urls() itself, so any future upstream change to
-# that function's classification logic (bug fixes, new bookkeeping) is
-# inherited automatically. The truncated snippet is only ever used for
-# that classification decision and early-stage sub-query planning -- once
-# a URL takes the real scrape path, gpt-researcher fetches and uses the
-# actual page content, not this snippet.
+# gpt_researcher.skills.researcher._search_relevant_source_urls() 会把任何
+# raw_content/body 超过 100 字符的搜索结果当作已取回的全文 —— 这条
+# 启发式是为真正内联返回全文的检索器（如 PubMed Central）设计的。
+# SearxNG 在 "body" 中放的是普通搜索结果摘要，通常超过 100 字符，
+# 因此不设上限时每个结果都会被错误地当作已取回，真正的页面
+# 永远不会被实际抓取（get_source_urls() 随后返回 []，报告带着零条
+# 可验证引用发布）。在源头这里设上限，而不是在
+# _search_relevant_source_urls() 本身打补丁，这样该函数分类逻辑的
+# 任何未来上游变更（bug 修复、新的记账方式）都会自动继承。
+# 截断后的摘要只用于那次分类决策和早期子查询规划 —— 一旦 URL
+# 走真正的抓取路径，gpt-researcher 会抓取并使用实际页面内容，
+# 而非这个摘要。
 _MAX_PREFETCHED_LEN = 100
 
 
 class SearxSearch():
     """
-    SearxNG API Retriever
+    SearxNG API 检索器
     """
 
-    # SearxNG puts an ordinary result snippet in "content"/"body"; the real
-    # page text still has to be fetched.
+    # SearxNG 在 "content"/"body" 中放普通结果摘要；真正的页面文本仍需抓取。
     requires_scraping = True
     def __init__(self, query: str, query_domains=None):
         """
-        Initializes the SearxSearch object
-        Args:
-            query: Search query string
+        初始化 SearxSearch 对象
+        参数：
+            query: 搜索查询字符串
         """
         self.query = query
         self.query_domains = query_domains or None
@@ -42,9 +38,9 @@ class SearxSearch():
 
     def get_searxng_url(self) -> str:
         """
-        Gets the SearxNG instance URL from environment variables
-        Returns:
-            str: Base URL of SearxNG instance
+        从环境变量获取 SearxNG 实例 URL
+        返回：
+            str: SearxNG 实例的基础 URL
         """
         try:
             base_url = os.environ["SEARX_URL"]
@@ -59,18 +55,18 @@ class SearxSearch():
 
     def search(self, max_results: int = 10) -> List[Dict[str, str]]:
         """
-        Searches the query using SearxNG API
-        Args:
-            max_results: Maximum number of results to return
-        Returns:
-            List of dictionaries containing search results
+        使用 SearxNG API 搜索查询
+        参数：
+            max_results: 返回结果的最大数量
+        返回：
+            包含搜索结果的字典列表
         """
         search_url = urljoin(self.base_url, "search")
-        # TODO: Add support for query domains
+        # TODO: 添加对查询域名的支持
         params = {
-            # The search query.
+            # 搜索查询。
             'q': self.query,
-            # Output format of results. Format needs to be activated in searxng config.
+            # 结果的输出格式。格式需要在 searxng 配置中激活。
             'format': 'json'
         }
 

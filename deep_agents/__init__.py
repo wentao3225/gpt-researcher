@@ -1,7 +1,6 @@
-"""Deep Agents x GPT Researcher example.
+"""Deep Agents x GPT Researcher 示例。
 
-Runs GPT Researcher as the research engine inside a LangChain Deep Agent
-harness: the main agent plans with todos, delegates sections to researcher
-subagents with isolated context, offloads drafts to a filesystem, and
-assembles a final cited report.
+在 LangChain Deep Agent 框架内把 GPT Researcher 作为研究引擎运行：
+主智能体用 todo 规划、把章节委托给带隔离上下文的 researcher
+子智能体、把草稿卸载到文件系统，并组装一份最终带引用的报告。
 """

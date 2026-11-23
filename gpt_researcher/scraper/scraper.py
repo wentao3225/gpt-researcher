@@ -1,7 +1,7 @@
-"""Web scraper module for GPT Researcher.
+"""GPT Researcher 的网页抓取模块。
 
-This module provides the Scraper class that extracts content from URLs
-using various scraping backends (BeautifulSoup, PyMuPDF, Browser, etc.).
+此模块提供 Scraper 类，使用各种抓取后端
+（BeautifulSoup、PyMuPDF、Browser 等）从 URL 提取内容。
 """
 
 import asyncio
@@ -29,51 +29,46 @@ from . import (
     WebBaseLoaderScraper,
 )
 
-# Known anti-bot/challenge-page markers, case-insensitive substring match.
-# These pages return HTTP 200 with real (often large) HTML bodies, so
-# neither an exception nor the short-content check below catches them --
-# without this, a block/challenge page is ingested as if it were the
-# article's real content. Each marker is anchored specifically enough to
-# avoid colliding with ordinary prose (e.g. "researchgate - temporarily
-# unavailable", not the bare phrase "temporarily unavailable", which a
-# legitimate article about an unrelated outage could plausibly contain).
-# Not exhaustive; add more as new blockers are observed in practice.
+# 已知的反爬/挑战页标记，不区分大小写的子串匹配。
+# 这些页面返回 HTTP 200 和真实（通常很大）的 HTML 体，因此
+# 异常和下方的短内容检查都捕获不到它们 —— 没有此检查，
+# 拦截/挑战页会被当作文章的真实内容摄入。每个标记都锚定得
+# 足够具体，避免与普通文字冲突（如 "researchgate - temporarily
+# unavailable"，而不是裸短语 "temporarily unavailable"，后者完全可能
+# 出现在一篇关于无关故障的正当文章里）。
+# 并不穷尽；实践中观察到新的拦截器时继续添加。
 _BLOCK_PAGE_MARKERS = (
-    "anubis uses a proof-of-work scheme",  # HAL and other Anubis-fronted sites
+    "anubis uses a proof-of-work scheme",  # HAL 和其他 Anubis 前置的站点
     "making sure you're not a bot",
     "checking your browser before accessing",
     "enable javascript and cookies to continue",
-    "researchgate - temporarily unavailable",  # ResearchGate's specific wording
+    "researchgate - temporarily unavailable",  # ResearchGate 的特定措辞
     "please verify you are a human",
     "attention required! | cloudflare",
     "sorry, you have been blocked",
-    # "Client Challenge" interstitial (e.g. wikiHow, Clas Ohlson): served to
-    # plain HTTP clients in place of the page, ~300 chars, so it clears the
-    # 100-char minimum. Its sentences sit on separate lines, so the marker is
-    # one sentence, in both apostrophe styles.
+    # "Client Challenge" 插页（如 wikiHow、Clas Ohlson）：代替页面
+    # 提供给纯 HTTP 客户端，约 300 字符，因此能通过 100 字符下限。
+    # 其句子各占一行，因此标记是一句话，两种撇号风格都有。
     "a required part of this site couldn\u2019t load",
     "a required part of this site couldn't load",
 )
 
-# Block pages are the entire response body -- a "please wait" message, not
-# a real article -- so they're always short and always appear at the very
-# start of the content. Checking only a prefix avoids lower-casing and
-# scanning multi-megabyte legitimate documents on every scrape.
+# 拦截页就是整个响应体 —— 一条"请稍候"消息，而非真实文章 ——
+# 因此总是很短，且总是出现在内容的最开头。只检查前缀，
+# 避免每次抓取都对多兆字节的正当文档做小写化和扫描。
 _BLOCK_PAGE_CHECK_PREFIX_LEN = 5_000
 
-# Word-list/vocab dumps (plain lists of unrelated words, no prose) scrape
-# cleanly and can dominate a report's context, since they lexically match
-# almost any query. They have essentially zero sentence-ending punctuation
-# relative to their size, unlike any real prose (even dense technical
-# writing has a period every ~100-200 characters). Size alone isn't used as
-# a signal -- long legitimate documents exist -- only the near-total absence
-# of sentence structure combined with real size is checked, to keep the
-# false-positive rate on real content low. Includes CJK fullwidth sentence
-# terminators (。！？) alongside the Latin ones, so long-form Chinese/
-# Japanese/Korean prose -- which never uses "." "!" "?" -- isn't
-# misclassified as a word list purely for lacking ASCII punctuation.
+# 词表/词汇表转储（不相关单词的纯列表，无散文）能干净地抓取，
+# 并可能主导报告的上下文，因为它们在词法上几乎匹配任何查询。
+# 相对于其大小，它们几乎没有句末标点，与任何真实散文不同
+# （即使是密集的技术写作每约 100-200 字符也有一个句号）。
+# 不单独使用大小作为信号 —— 长的正当文档是存在的 —— 只检查
+# 句子结构近乎完全缺失且确实很大这一组合，以保持对真实内容的
+# 低误报率。在拉丁句末符之外包含 CJK 全角句末符（。！？），
+# 使长篇中文/日文/韩文散文 —— 从不使用 "." "!" "?" —— 不会仅因
+# 缺少 ASCII 标点而被误判为词表。
 _MIN_LENGTH_FOR_WORDLIST_CHECK = 200_000
-_MAX_SENTENCE_DENSITY = 1 / 5000  # at most 1 sentence-ending mark per 5000 chars
+_MAX_SENTENCE_DENSITY = 1 / 5000  # 每 5000 字符至多 1 个句末标记
 _SENTENCE_ENDING_CHARS = frozenset(".!?。！？")
 
 
@@ -89,19 +84,16 @@ def _looks_like_word_list(text: str) -> bool:
     return (sentence_endings / len(text)) < _MAX_SENTENCE_DENSITY
 
 
-# get_scraper() picks a backend from the URL's suffix, but PDFs served from
-# institutional repositories (DSpace/EPrints-style download endpoints) are
-# routed by content type, not a file extension -- e.g.
-# "scholarspace.manoa.hawaii.edu/bitstreams/<uuid>/download" has none. Those
-# fall through to a text/HTML scraper, which has no way to decode the PDF
-# body and returns its raw bytes (FlateDecode streams, xref tables, /Annot
-# objects) as if it were the page's real text -- silently: no exception, a
-# normal-looking content_length, just unusable content.
+# get_scraper() 根据 URL 后缀选择后端，但机构知识库（DSpace/EPrints
+# 风格的下载端点）提供的 PDF 按内容类型路由，而非文件扩展名 —— 例如
+# "scholarspace.manoa.hawaii.edu/bitstreams/<uuid>/download" 没有后缀。
+# 这些会落入文本/HTML 抓取器，它无法解码 PDF 体，会把原始字节
+# （FlateDecode 流、xref 表、/Annot 对象）当作页面的真实文本返回 ——
+# 而且是静默的：没有异常，content_length 看起来正常，只是内容不可用。
 #
-# These tokens are PDF's own internal structural syntax; they essentially
-# never occur, even coincidentally, in real prose. Two independent hits is
-# enough to be confident this is raw PDF, not text that happens to contain
-# one of these words in isolation.
+# 这些标记是 PDF 自身的内部结构语法；它们几乎从不出现在真实散文中，
+# 即使偶然出现也只是孤立的词。两个独立命中就足以确信这是原始 PDF，
+# 而非恰好包含其中一个词的文本。
 _PDF_STRUCTURE_MARKERS = ("endobj", "endstream", "/FlateDecode", "xref", "trailer")
 _MIN_PDF_MARKER_HITS = 2
 
@@ -115,7 +107,7 @@ def _looks_like_unextracted_pdf(text: str) -> bool:
 
 class Scraper:
     """
-    Scraper class to extract the content from the links
+    从链接提取内容的 Scraper 类
     """
 
     def __init__(
@@ -127,12 +119,12 @@ class Scraper:
         event_handler=None,
     ):
         """
-        Initialize the Scraper class.
-        Args:
-            urls: List of URLs to scrape (duplicates will be removed)
+        初始化 Scraper 类。
+        参数：
+            urls: 要抓取的 URL 列表（重复项将被移除）
         """
-        # Optimization: Remove duplicate URLs to avoid redundant scraping
-        unique_urls = list(dict.fromkeys(urls))  # Preserves order while removing duplicates
+        # 优化：移除重复 URL 以避免冗余抓取
+        unique_urls = list(dict.fromkeys(urls))  # 去重的同时保持顺序
         duplicates_removed = len(urls) - len(unique_urls)
 
         self.urls = unique_urls
@@ -147,7 +139,7 @@ class Scraper:
         self.worker_pool = worker_pool
         self.event_handler = event_handler
 
-        # Log deduplication results if duplicates were found
+        # 如果发现重复则记录去重结果
         if duplicates_removed > 0:
             self.logger.info(
                 f"Removed {duplicates_removed} duplicate URL(s). "
@@ -156,7 +148,7 @@ class Scraper:
 
     async def run(self):
         """
-        Extracts the content from the links
+        从链接提取内容
         """
         contents = await asyncio.gather(
             *(self.extract_data_from_url(url, self.session) for url in self.urls)
@@ -182,9 +174,9 @@ class Scraper:
                 **fields,
             )
 
-        # extract_data_from_url is expected to return a dict, but a buggy backend
-        # or cancelled worker can still yield None / non-dict. Indexing those with
-        # content["raw_content"] crashes the whole gather result and drops good rows.
+        # extract_data_from_url 预期返回字典，但有 bug 的后端或被取消的
+        # 工作进程仍可能产出 None / 非字典。用 content["raw_content"]
+        # 索引它们会让整个 gather 结果崩溃并丢弃好的行。
         res = [
             content
             for content in contents
@@ -194,9 +186,8 @@ class Scraper:
 
     def _check_pkg(self, scrapper_name: str) -> None:
         """
-        Checks and ensures required Python packages are available for scrapers that need
-        dependencies beyond requirements.txt. When adding a new scraper to the repo, update `pkg_map`
-        with its required information and call check_pkg() during initialization.
+        检查并确保需要 requirements.txt 之外依赖的抓取器所需的 Python 包可用。
+        向仓库添加新抓取器时，用其所需信息更新 `pkg_map` 并在初始化时调用 check_pkg()。
         """
         pkg_map = {
             "tavily_extract": {
@@ -228,12 +219,12 @@ class Scraper:
 
     async def extract_data_from_url(self, link, session):
         """
-        Extracts the data from the link with logging
+        带日志地从链接提取数据
         """
         async with self.worker_pool.throttle():
             try:
-                # Reject SSRF / local-file targets (internal hosts, cloud metadata
-                # endpoints, file:// paths, etc.) before any request is made.
+                # 在发出任何请求之前拒绝 SSRF / 本地文件目标
+                # （内部主机、云元数据端点、file:// 路径等）。
                 try:
                     validate_url(link)
                 except UnsafeURLError as e:
@@ -248,11 +239,11 @@ class Scraper:
                 Scraper = self.get_scraper(link)
                 scraper = Scraper(link, session)
 
-                # Get scraper name
+                # 获取抓取器名称
                 scraper_name = scraper.__class__.__name__
                 self.logger.info(f"\n=== Using {scraper_name} ===")
 
-                # Get content
+                # 获取内容
                 if hasattr(scraper, "scrape_async"):
                     content, image_urls, title = await scraper.scrape_async()
                 else:
@@ -270,7 +261,7 @@ class Scraper:
                         link, title, reason or "Content too short or empty"
                     )
 
-                # Log results
+                # 记录结果
                 self.logger.info(f"\nTitle: {title}")
                 self.logger.info(f"Content length: {len(content)} characters")
                 self.logger.info(f"Number of images: {len(image_urls)}")
@@ -312,12 +303,12 @@ class Scraper:
                 return {"url": link, "raw_content": None, "image_urls": [], "title": ""}
 
     def _reject(self, link, title, reason):
-        """Treat a fetched-but-unusable page as a scrape failure, in the same
-        shape a raised exception or too-short content already returns --
-        downstream code (Scraper.run) drops any raw_content: None entry.
+        """将已抓取但不可用的页面视为抓取失败，返回与抛出异常或
+        内容过短时相同的形状 —— 下游代码（Scraper.run）会丢弃任何
+        raw_content: None 的条目。
 
-        ``failure_reason`` is additive metadata for callers that inspect a
-        failed row before that filtering step.
+        ``failure_reason`` 是附加元数据，供在该过滤步骤之前检查
+        失败行的调用方使用。
         """
         self.logger.warning(f"{reason} for {link}, treating as fetch failure")
         return {
@@ -330,13 +321,12 @@ class Scraper:
 
 
     async def _retry_as_pdf(self, link, session):
-        """Re-fetch link with PyMuPDFScraper after the scraper get_scraper()
-        originally picked returned unextracted PDF binary.
+        """在最初选择的抓取器 get_scraper() 返回未提取的 PDF 二进制后，
+        用 PyMuPDFScraper 重新抓取链接。
 
-        Returns the normal extract_data_from_url result dict on success, or
-        None if the retry also failed to produce usable content (so the
-        caller falls back to treating this as an ordinary fetch failure
-        instead of passing binary through).
+        成功时返回正常的 extract_data_from_url 结果字典；重试也无法
+        产出可用内容时返回 None（因此调用方回退到将其视为普通抓取
+        失败，而不是让二进制通过）。
         """
         scraper = PyMuPDFScraper(link, session)
         content, image_urls, title = await asyncio.get_running_loop().run_in_executor(
@@ -364,20 +354,19 @@ class Scraper:
 
     def get_scraper(self, link):
         """
-        The function `get_scraper` determines the appropriate scraper class based on the provided link
-        or a default scraper if none matches.
+        函数 `get_scraper` 根据提供的链接确定合适的抓取器类，
+        无匹配时使用默认抓取器。
 
-        Args:
-          link: The `get_scraper` method takes a `link` parameter which is a URL link to a webpage or a
-        PDF file. Based on the type of content the link points to, the method determines the appropriate
-        scraper class to use for extracting data from that content.
+        参数：
+          link: `get_scraper` 方法接受一个 `link` 参数，即指向网页或
+        PDF 文件的 URL 链接。根据链接指向的内容类型，该方法确定用于
+        从该内容提取数据的合适抓取器类。
 
-        Returns:
-          The `get_scraper` method returns the scraper class based on the provided link. The method
-        checks the link to determine the appropriate scraper class to use based on predefined mappings
-        in the `SCRAPER_CLASSES` dictionary. If the link ends with ".pdf", it selects the
-        `PyMuPDFScraper` class. URLs hosted by arxiv.org or its subdomains
-        select `ArxivScraper`.
+        返回：
+          `get_scraper` 方法根据提供的链接返回抓取器类。该方法检查
+        链接，依据 `SCRAPER_CLASSES` 字典中的预定义映射确定合适的
+        抓取器类。如果链接以 ".pdf" 结尾，选择 `PyMuPDFScraper` 类。
+        arxiv.org 或其子域托管的 URL 选择 `ArxivScraper`。
         """
 
         SCRAPER_CLASSES = {
@@ -393,12 +382,12 @@ class Scraper:
 
         scraper_key = None
 
-        # Inspect only the path component so query strings / fragments don't
-        # hide the extension (e.g. signed CDN/S3 links like "…/doc.pdf?sig=…").
-        # Match case-insensitively because ".PDF" is a perfectly valid suffix.
+        # 只检查路径组件，使查询字符串/片段不会隐藏扩展名
+        # （如带签名的 CDN/S3 链接 "…/doc.pdf?sig=…"）。
+        # 不区分大小写匹配，因为 ".PDF" 是完全有效的后缀。
         parsed_url = urlparse(link)
         path = parsed_url.path
-        # A trailing DNS root dot still identifies the same host.
+        # 尾部的 DNS 根点仍标识同一主机。
         hostname = (parsed_url.hostname or "").removesuffix(".")
         if path.lower().endswith(".pdf"):
             scraper_key = "pdf"

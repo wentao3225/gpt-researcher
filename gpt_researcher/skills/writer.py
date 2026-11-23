@@ -1,7 +1,7 @@
-"""Report generator skill for GPT Researcher.
+"""GPT Researcher 的报告生成技能。
 
-This module provides the ReportGenerator class that handles report
-writing, including introductions, conclusions, and subtopic management.
+此模块提供 ReportGenerator 类，处理报告撰写，
+包括引言、结论和子主题管理。
 """
 
 import json
@@ -18,21 +18,21 @@ from ..utils.llm import construct_subtopics
 
 
 class ReportGenerator:
-    """Generates reports based on research data.
+    """基于研究数据生成报告。
 
-    This class handles all aspects of report generation including
-    writing introductions, conclusions, and managing report structure.
+    此类处理报告生成的所有方面，包括撰写引言、
+    结论和管理报告结构。
 
-    Attributes:
-        researcher: The parent GPTResearcher instance.
-        research_params: Dictionary of parameters for report generation.
+    属性：
+        researcher: 上级 GPTResearcher 实例。
+        research_params: 报告生成参数字典。
     """
 
     def __init__(self, researcher):
-        """Initialize the ReportGenerator.
+        """初始化 ReportGenerator。
 
-        Args:
-            researcher: The GPTResearcher instance that owns this generator.
+        参数：
+            researcher: 拥有此生成器的 GPTResearcher 实例。
         """
         self.researcher = researcher
         self.research_params = {
@@ -48,21 +48,21 @@ class ReportGenerator:
 
     async def write_report(self, existing_headers: list = [], relevant_written_contents: list = [], ext_context=None, custom_prompt="", available_images: list = None) -> str:
         """
-        Write a report based on existing headers and relevant contents.
+        根据已有标题和相关内容撰写报告。
 
-        Args:
-            existing_headers (list): List of existing headers.
-            relevant_written_contents (list): List of relevant written contents.
-            ext_context (Optional): External context, if any.
-            custom_prompt (str): Custom prompt for the report.
-            available_images (list): Pre-generated images available for embedding.
+        参数：
+            existing_headers (list): 已有标题列表。
+            relevant_written_contents (list): 相关已写内容列表。
+            ext_context (可选): 外部上下文（如有）。
+            custom_prompt (str): 报告的自定义提示词。
+            available_images (list): 可嵌入的预生成图片。
 
-        Returns:
-            str: The generated report.
+        返回：
+            str: 生成的报告。
         """
         available_images = available_images or []
         
-        # send the selected images prior to writing report
+        # 在撰写报告前发送选定的图片
         research_images = self.researcher.get_research_images()
         if research_images:
             await stream_output(
@@ -76,9 +76,9 @@ class ReportGenerator:
 
         context = ext_context or self.researcher.context
 
-        # Guard against fabricating a report from nothing: if no research content was
-        # gathered (every retriever returned empty / was blocked / rate-limited), don't
-        # silently write a confident, sourced-looking report - abstain so it is visible.
+        # 防止凭空捏造报告：如果没有收集到任何研究内容
+        #（每个检索器都返回空/被阻止/被限流），就不要
+        #静默写出一份看起来自信、有来源的报告 —— 弃权使其可见。
         _ctx = "\n".join(context) if isinstance(context, list) else str(context or "")
         if not _ctx.strip():
             return (
@@ -87,7 +87,7 @@ class ReportGenerator:
                 "blocked), so I am not able to produce a reliable, sourced report."
             )
         
-        # Log image availability
+        # 记录图片可用性
         if available_images and self.researcher.verbose:
             await stream_output(
                 "logs",
@@ -105,19 +105,18 @@ class ReportGenerator:
             )
 
         report_params = self.research_params.copy()
-        # self.research_params["websocket"] was captured once in __init__,
-        # at GPTResearcher construction time -- a caller that sets
-        # researcher.websocket after construction (e.g. to stream progress
-        # only during conduct_research(), then disable it before
-        # write_report() so a report-writing retry isn't treated as an
-        # unreplayable live stream) would otherwise have that change
-        # silently ignored here. Re-read the live attribute instead.
+        # self.research_params["websocket"] 在 __init__ 中被捕获一次，
+        # 即在 GPTResearcher 构造时 —— 在构造后设置
+        # researcher.websocket 的调用方（例如只在 conduct_research() 期间
+        # 流式传输进度，然后在 write_report() 前禁用它，使报告撰写的
+        # 重试不被当作不可重放的实时流）否则这里的更改会被静默忽略。
+        # 改为重新读取实时属性。
         report_params["websocket"] = self.researcher.websocket
         if not report_params["agent_role_prompt"]:
             report_params["agent_role_prompt"] = self.researcher.cfg.agent_role or self.researcher.role
         report_params["context"] = context
         report_params["custom_prompt"] = custom_prompt
-        report_params["available_images"] = available_images  # Pass pre-generated images
+        report_params["available_images"] = available_images  # 传入预生成图片
 
         if self.researcher.report_type == "subtopic_report":
             report_params.update({
@@ -143,13 +142,13 @@ class ReportGenerator:
 
     async def write_report_conclusion(self, report_content: str) -> str:
         """
-        Write the conclusion for the report.
+        撰写报告的结论。
 
-        Args:
-            report_content (str): The content of the report.
+        参数：
+            report_content (str): 报告的内容。
 
-        Returns:
-            str: The generated conclusion.
+        返回：
+            str: 生成的结论。
         """
         if self.researcher.verbose:
             await stream_output(
@@ -181,7 +180,7 @@ class ReportGenerator:
         return conclusion
 
     async def write_introduction(self):
-        """Write the introduction section of the report."""
+        """撰写报告的引言部分。"""
         if self.researcher.verbose:
             await stream_output(
                 "logs",
@@ -212,7 +211,7 @@ class ReportGenerator:
         return introduction
 
     async def get_subtopics(self):
-        """Retrieve subtopics for the research."""
+        """获取研究的子主题。"""
         if self.researcher.verbose:
             await stream_output(
                 "logs",
@@ -241,7 +240,7 @@ class ReportGenerator:
         return subtopics
 
     async def get_draft_section_titles(self, current_subtopic: str):
-        """Generate draft section titles for the report."""
+        """为报告生成草稿章节标题。"""
         if self.researcher.verbose:
             await stream_output(
                 "logs",

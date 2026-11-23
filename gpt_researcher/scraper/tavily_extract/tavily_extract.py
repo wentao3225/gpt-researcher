@@ -12,8 +12,8 @@ class TavilyExtract:
 
     def get_api_key(self) -> str:
         """
-        Gets the Tavily API key
-        Returns:
+        获取 Tavily API 密钥
+        返回：
         Api key (str)
         """
         try:
@@ -25,14 +25,14 @@ class TavilyExtract:
 
     def scrape(self) -> tuple:
         """
-        This function extracts content from a specified link using the Tavily Python SDK, the title and
-        images from the link are extracted using the functions from `gpt_researcher/scraper/utils.py`.
+        此函数使用 Tavily Python SDK 从指定链接提取内容，标题和图片
+        使用 `gpt_researcher/scraper/utils.py` 中的函数提取。
 
-        Returns:
-          The `scrape` method returns a tuple containing the extracted content, a list of image URLs, and
-        the title of the webpage specified by the `self.link` attribute. It uses the Tavily Python SDK to
-        extract and clean content from the webpage. If any exception occurs during the process, an error
-        message is printed and an empty result is returned.
+        返回：
+          `scrape` 方法返回一个元组，包含提取的内容、图片 URL 列表，
+        以及 `self.link` 属性指定的网页标题。它使用 Tavily Python SDK
+        提取并清理网页内容。如果过程中出现任何异常，会打印错误消息
+        并返回空结果。
         """
 
         try:
@@ -40,7 +40,7 @@ class TavilyExtract:
             if not isinstance(response, dict):
                 return "", [], ""
 
-            # failed_results may be missing, null, or a non-empty list.
+            # failed_results 可能缺失、为 null 或非空列表。
             failed = response.get("failed_results") or []
             if failed:
                 return "", [], ""
@@ -51,14 +51,14 @@ class TavilyExtract:
             first = results[0]
             if not isinstance(first, dict):
                 return "", [], ""
-            # Prefer raw_content; never KeyError if the extract payload is partial.
+            # 优先使用 raw_content；即使 extract 载荷不完整也绝不 KeyError。
             content = first.get("raw_content") or ""
             if not content:
                 return "", [], ""
 
-            # Optional HTML side-path for images/title. session may be unset
-            # (constructor default session=None) — brick that off rather than
-            # AttributeError inside the broad except.
+            # 可选的 HTML 分支，用于图片/标题。session 可能未设置
+            # （构造函数默认 session=None）—— 直接阻断该分支，而不是
+            # 在宽泛 except 内出现 AttributeError。
             image_urls = []
             title = ""
             if self.session is not None:

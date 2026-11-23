@@ -61,9 +61,11 @@ of sources used, and the file path. Never paste the full draft into your reply.
 
 
 def build_agent(task: dict, run_dir: str):
+    """按任务配置创建带文件系统后端的主/子智能体结构"""
     model = os.environ.get("STRATEGIC_LLM") or task.get("model", "openai:gpt-5.4")
     quick_search, deep_research = build_research_tools(task)
 
+    # 可选的用户自定义报告写作准则，会追加到主编提示词末尾
     guidelines = ""
     if task.get("follow_guidelines") and task.get("guidelines"):
         rules = "\n".join(f"- {g}" for g in task["guidelines"])
@@ -72,6 +74,7 @@ def build_agent(task: dict, run_dir: str):
     researcher_subagent = {
         "name": "researcher",
         "description": (
+            # 下面这段描述会展示给编排智能体，属于提示词的一部分，因此保留英文
             "Conducts in-depth, citation-grade research on one report section "
             "and writes a draft to a file. Give it one section topic, the "
             "overall report topic, and the target file path."

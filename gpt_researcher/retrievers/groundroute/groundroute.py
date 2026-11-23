@@ -1,8 +1,8 @@
-"""GroundRoute search retriever for GPT Researcher.
+"""GPT Researcher 的 GroundRoute 搜索检索器。
 
-GroundRoute routes each query across multiple web-search engines (Serper, Brave,
-Exa, Tavily, Firecrawl, Perplexity), picks the cheapest that meets a quality bar,
-caches repeats, and fails over — exposed as one search API.
+GroundRoute 将每个查询路由到多个网络搜索引擎（Serper、Brave、
+Exa、Tavily、Firecrawl、Perplexity），挑选满足质量门槛的最便宜者，
+缓存重复查询并支持故障转移 —— 以单一搜索 API 暴露。
 """
 
 import os
@@ -11,7 +11,7 @@ import requests
 
 
 class GroundRouteSearch:
-    """GroundRoute multi-engine search retriever."""
+    """GroundRoute 多引擎搜索检索器。"""
 
     def __init__(self, query, headers=None, topic="general", query_domains=None):
         self.query = query
@@ -22,7 +22,7 @@ class GroundRouteSearch:
         self.query_domains = query_domains or None
 
     def get_api_key(self):
-        """Get the GroundRoute API key from headers or the environment."""
+        """从请求头或环境获取 GroundRoute API 密钥。"""
         api_key = self.headers.get("groundroute_api_key")
         if not api_key:
             try:
@@ -35,7 +35,7 @@ class GroundRouteSearch:
         return api_key
 
     def search(self, max_results=7):
-        """Search via GroundRoute. Returns [{"href": url, "body": content}, ...]."""
+        """通过 GroundRoute 搜索。返回 [{"href": url, "body": content}, ...]。"""
         try:
             response = requests.post(
                 self.base_url,

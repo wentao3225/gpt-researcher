@@ -21,8 +21,8 @@ async def call_model(
             model=model,
             messages=lc_messages,
             temperature=0,
-            # Reasoning models count their thinking against this limit; the
-            # 4000 default leaves the writer's long prompts with an empty answer.
+            # 推理模型会把思考计入此限制；4000 的默认值让撰写者的长
+            # 提示词得到空答案。
             max_tokens=cfg.smart_token_limit,
             reasoning_effort=cfg.reasoning_effort,
             llm_provider=cfg.smart_llm_provider,

@@ -1,11 +1,10 @@
-"""Generate reports for DeepResearch Bench (official harness) from both agents.
+"""为 DeepResearch Bench（官方框架）从两个智能体生成报告。
 
-Samples English tasks from the official query set (stratified by topic, seeded)
-and runs the two deep agents on the raw task prompts, saving outputs in the
-benchmark's required raw_data JSONL format:
+从官方查询集抽取英文任务（按话题分层、带种子），用原始任务提示词跑两个
+深度智能体，按基准要求的 raw_data JSONL 格式保存输出：
     {"id": ..., "prompt": ..., "article": ...}
 
-Usage (from the repository root):
+用法（从仓库根目录）：
     python deep_agents/drb_generate.py --bench-dir /tmp/deep_research_bench --num-tasks 10
 """
 
@@ -28,10 +27,10 @@ from datetime import datetime
 
 from deep_agents.benchmark import build_baseline_agent, build_gptr_agent
 
-# Report-writing prompt shared by both agents. DeepResearch Bench evaluates
-# long-form research reports, and its FACT pipeline can only verify claims
-# whose sources appear as URLs in the report body - so inline citations are a
-# hard requirement, exactly as for the products on the DRB leaderboard.
+# 两个智能体共享的报告撰写提示词。DeepResearch Bench 评估长篇
+# 研究报告，其 FACT 管线只能核验来源以 URL 出现在报告正文中的
+# 主张 —— 因此行内引用是硬性要求，与 DRB 排行榜上的产品
+# 完全一样。
 REPORT_SYSTEM_PROMPT = f"""You are an expert research analyst. Today's date \
 is {datetime.now().strftime('%B %d, %Y')}. Use your tools to research the \
 user's request thoroughly, then write a comprehensive, in-depth research \
@@ -61,7 +60,7 @@ SYSTEMS = {
 def sample_tasks(query_file: Path, num_tasks: int, seed: int) -> list[dict]:
     rows = [json.loads(line) for line in open(query_file, encoding="utf-8")]
     en = [r for r in rows if r["language"] == "en"]
-    # Stratified: allocate slots proportionally to topic frequency, then fill
+    # 分层抽样：按话题频率比例分配名额，然后填充
     rng = random.Random(seed)
     by_topic: dict[str, list] = {}
     for r in en:

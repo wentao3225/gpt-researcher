@@ -1,25 +1,25 @@
-"""Embedding provider management for GPT Researcher.
+"""GPT Researcher 的嵌入提供者管理。
 
-This module provides the Memory class that handles embedding generation
-across multiple providers (OpenAI, Cohere, Google, Ollama, etc.).
+此模块提供 Memory 类，处理跨多个提供者（OpenAI、Cohere、Google、
+Ollama 等）的嵌入生成。
 
-Supported providers:
-    - openai: OpenAI embeddings
-    - azure_openai: Azure OpenAI embeddings
-    - cohere: Cohere embeddings
-    - google_vertexai: Google Vertex AI embeddings
-    - google_genai: Google Generative AI embeddings
-    - fireworks: Fireworks AI embeddings
-    - ollama: Local Ollama embeddings
-    - together: Together AI embeddings
-    - mistralai: Mistral AI embeddings
-    - huggingface: HuggingFace embeddings
-    - nomic: Nomic embeddings
-    - voyageai: Voyage AI embeddings
-    - dashscope: DashScope embeddings
-    - bedrock: AWS Bedrock embeddings
-    - aimlapi: AIML API embeddings
-    - custom: Custom OpenAI-compatible API
+支持的提供者：
+    - openai: OpenAI 嵌入
+    - azure_openai: Azure OpenAI 嵌入
+    - cohere: Cohere 嵌入
+    - google_vertexai: Google Vertex AI 嵌入
+    - google_genai: Google Generative AI 嵌入
+    - fireworks: Fireworks AI 嵌入
+    - ollama: 本地 Ollama 嵌入
+    - together: Together AI 嵌入
+    - mistralai: Mistral AI 嵌入
+    - huggingface: HuggingFace 嵌入
+    - nomic: Nomic 嵌入
+    - voyageai: Voyage AI 嵌入
+    - dashscope: DashScope 嵌入
+    - bedrock: AWS Bedrock 嵌入
+    - aimlapi: AIML API 嵌入
+    - custom: 自定义 OpenAI 兼容 API
 """
 
 import os
@@ -57,16 +57,15 @@ _SUPPORTED_PROVIDERS = {
 
 
 class Memory:
-    """Manages embedding generation for document similarity and retrieval.
+    """管理用于文档相似度和检索的嵌入生成。
 
-    This class provides a unified interface for generating embeddings
-    using various providers. It lazily loads provider-specific dependencies
-    only when needed.
+    此类提供统一的接口，使用各种提供者生成嵌入。
+    仅在需要时才延迟加载特定提供者的依赖。
 
-    Attributes:
-        _embeddings: The underlying LangChain embeddings instance.
+    属性：
+        _embeddings: 底层的 LangChain 嵌入实例。
 
-    Example:
+    示例：
         ```python
         memory = Memory("openai", "text-embedding-3-small")
         embeddings = memory.get_embeddings()
@@ -74,17 +73,17 @@ class Memory:
     """
 
     def __init__(self, embedding_provider: str, model: str, **embedding_kwargs: Any):
-        """Initialize the Memory with a specific embedding provider.
+        """使用指定的嵌入提供者初始化 Memory。
 
-        Args:
-            embedding_provider: The name of the embedding provider to use.
-                Must be one of the supported providers (openai, cohere, etc.).
-            model: The model name/ID to use for embeddings.
-            **embedding_kwargs: Additional keyword arguments passed to the
-                embedding provider's constructor.
+        参数：
+            embedding_provider: 要使用的嵌入提供者名称。
+                必须是受支持的提供者之一（openai、cohere 等）。
+            model: 用于嵌入的模型名称/ID。
+            **embedding_kwargs: 传递给嵌入提供者构造函数的
+                额外关键字参数。
 
-        Raises:
-            Exception: If the embedding provider is not supported.
+        抛出：
+            Exception: 如果嵌入提供者不受支持。
         """
         _embeddings = None
         match embedding_provider:
@@ -103,7 +102,7 @@ class Memory:
             case "openai":
                 from langchain_openai import OpenAIEmbeddings
 
-                # Support custom OpenAI-compatible APIs via OPENAI_BASE_URL
+                # 通过 OPENAI_BASE_URL 支持自定义 OpenAI 兼容 API
                 if "openai_api_base" not in embedding_kwargs and os.environ.get("OPENAI_BASE_URL"):
                     embedding_kwargs["openai_api_base"] = os.environ["OPENAI_BASE_URL"]
 
@@ -229,9 +228,9 @@ class Memory:
         self._embeddings = _embeddings
 
     def get_embeddings(self):
-        """Get the configured embeddings instance.
+        """获取已配置的嵌入实例。
 
-        Returns:
-            The LangChain embeddings instance configured for this Memory.
+        返回：
+            为此 Memory 配置的 LangChain 嵌入实例。
         """
         return self._embeddings

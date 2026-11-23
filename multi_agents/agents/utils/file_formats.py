@@ -5,30 +5,30 @@ import mistune
 import os
 
 async def write_to_file(filename: str, text: str) -> None:
-    """Asynchronously write text to a file in UTF-8 encoding.
+    """以 UTF-8 编码异步将文本写入文件。
 
-    Args:
-        filename (str): The filename to write to.
-        text (str): The text to write.
+    参数：
+        filename (str): 要写入的文件名。
+        text (str): 要写入的文本。
     """
-    # Ensure text is a string
+    # 确保 text 是字符串
     if not isinstance(text, str):
         text = str(text)
 
-    # Convert text to UTF-8, replacing any problematic characters
+    # 将文本转换为 UTF-8，替换任何有问题的字符
     text_utf8 = text.encode('utf-8', errors='replace').decode('utf-8')
 
     async with aiofiles.open(filename, "w", encoding='utf-8') as file:
         await file.write(text_utf8)
 
 async def write_text_to_md(text: str, path: str) -> str:
-    """Writes text to a Markdown file and returns the file path.
+    """将文本写入 Markdown 文件并返回文件路径。
 
-    Args:
-        text (str): Text to write to the Markdown file.
+    参数：
+        text (str): 要写入 Markdown 文件的文本。
 
-    Returns:
-        str: The file path of the generated Markdown file.
+    返回：
+        str: 生成的 Markdown 文件的路径。
     """
     task = uuid.uuid4().hex
     file_path = f"{path}/{task}.md"
@@ -38,19 +38,19 @@ async def write_text_to_md(text: str, path: str) -> str:
 
 
 async def write_md_to_pdf(text: str, path: str) -> str:
-    """Converts Markdown text to a PDF file and returns the file path.
+    """将 Markdown 文本转换为 PDF 文件并返回文件路径。
 
-    Args:
-        text (str): Markdown text to convert.
+    参数：
+        text (str): 要转换的 Markdown 文本。
 
-    Returns:
-        str: The encoded file path of the generated PDF.
+    返回：
+        str: 生成的 PDF 的编码后文件路径。
     """
     task = uuid.uuid4().hex
     file_path = f"{path}/{task}.pdf"
 
     try:
-        # Get the directory of the current file
+        # 获取当前文件所在目录
         current_dir = os.path.dirname(os.path.abspath(__file__))
         css_path = os.path.join(current_dir, "pdf_styles.css")
         
@@ -70,13 +70,13 @@ async def write_md_to_pdf(text: str, path: str) -> str:
 
 
 async def write_md_to_word(text: str, path: str) -> str:
-    """Converts Markdown text to a DOCX file and returns the file path.
+    """将 Markdown 文本转换为 DOCX 文件并返回文件路径。
 
-    Args:
-        text (str): Markdown text to convert.
+    参数：
+        text (str): 要转换的 Markdown 文本。
 
-    Returns:
-        str: The encoded file path of the generated DOCX.
+    返回：
+        str: 生成的 DOCX 的编码后文件路径。
     """
     task = uuid.uuid4().hex
     file_path = f"{path}/{task}.docx"
@@ -84,14 +84,14 @@ async def write_md_to_word(text: str, path: str) -> str:
     try:
         from htmldocx import HtmlToDocx
         from docx import Document
-        # Convert report markdown to HTML
+        # 将报告 markdown 转换为 HTML
         html = mistune.html(text)
-        # Create a document object
+        # 创建文档对象
         doc = Document()
-        # Convert the html generated from the report to document format
+        # 将报告生成的 html 转换为文档格式
         HtmlToDocx().add_html_to_document(html, doc)
 
-        # Saving the docx document to file_path
+        # 将 docx 文档保存到 file_path
         doc.save(file_path)
 
         print(f"Report written to {file_path}")

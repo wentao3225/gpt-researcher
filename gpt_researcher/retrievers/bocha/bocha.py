@@ -1,6 +1,6 @@
-# BoCha Search Retriever
+# BoCha 搜索检索器
 
-# libraries
+# 库
 import logging
 import os
 import requests
@@ -8,13 +8,12 @@ import requests
 
 class BoChaSearch:
     """
-    BoCha Search Retriever
+    BoCha 搜索检索器
     """
-
     def __init__(self, query, query_domains=None):
         """
-        Initializes the BoChaSearch object
-        Args:
+        初始化 BoChaSearch 对象
+        参数：
             query:
         """
         self.query = query
@@ -23,8 +22,8 @@ class BoChaSearch:
 
     def get_api_key(self):
         """
-        Gets the BoCha API key
-        Returns:
+        获取 BoCha API 密钥
+        返回：
 
         """
         try:
@@ -38,8 +37,8 @@ class BoChaSearch:
 
     def search(self, max_results=7) -> list[dict[str]]:
         """
-        Searches the query
-        Returns:
+        搜索查询
+        返回：
 
         """
         url = 'https://api.bochaai.com/v1/web-search'
@@ -64,9 +63,9 @@ class BoChaSearch:
             )
             return []
 
-        # The BoCha response shape is data.webPages.value; any of these may be
-        # missing on an error/empty payload, so walk it defensively rather than
-        # KeyError-ing the whole research run.
+        # BoCha 响应形状是 data.webPages.value；错误/空载荷中任何一级
+        # 都可能缺失，因此防御性地逐级访问，而不是让整个研究运行
+        # 抛出 KeyError。
         results = (
             ((json_response or {}).get("data") or {}).get("webPages") or {}
         ).get("value") or []
@@ -75,8 +74,8 @@ class BoChaSearch:
 
         search_results = []
 
-        # Normalize the results to match the format of the other search APIs.
-        # Skip non-dict rows / empty URLs; default missing fields to "".
+        # 将结果规范化以匹配其他搜索 API 的格式。
+        # 跳过非字典行 / 空 URL；缺失字段默认为 ""。
         for result in results:
             if not isinstance(result, dict):
                 continue

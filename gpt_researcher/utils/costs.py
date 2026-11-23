@@ -1,4 +1,4 @@
-"""Cost estimation utilities for LLM API usage."""
+"""LLM API 使用的成本估算工具。"""
 
 from __future__ import annotations
 
@@ -8,26 +8,25 @@ from typing import Any
 
 import tiktoken
 
-# Per OpenAI Pricing Page: https://openai.com/api/pricing/
+# 依据 OpenAI 定价页面：https://openai.com/api/pricing/
 ENCODING_MODEL = "o200k_base"
 INPUT_COST_PER_TOKEN = 0.000005
 OUTPUT_COST_PER_TOKEN = 0.000015
 IMAGE_INFERENCE_COST = 0.003825
-EMBEDDING_COST = 0.02 / 1000000  # Assumes new ada-3-small
+EMBEDDING_COST = 0.02 / 1000000  # 假设使用新的 ada-3-small
 
-# OpenAI's automatic prompt caching bills the cached portion of input
-# tokens at a discount off the standard input rate (currently 50% across
-# the GPT-4o/4.1/5 families). Kept as a single constant since OpenAI has
-# used a flat 50% cache discount across all its cached models to date;
-# revisit if a future model introduces a different ratio.
+# OpenAI 的自动提示词缓存对输入 token 中命中缓存的部分按标准输入
+# 费率打折计费（目前 GPT-4o/4.1/5 系列统一为 50% 折扣）。由于 OpenAI
+# 迄今对所有支持缓存的模型都采用统一的 50% 缓存折扣，这里保持为单一
+# 常量；若未来模型引入不同比例，再重新审视。
 # https://openai.com/api/pricing/
 OPENAI_CACHED_INPUT_DISCOUNT = 0.5
 
 logger = logging.getLogger(__name__)
 
-# (patterns, input $/MTok, output $/MTok) - first match wins, so more
-# specific patterns (e.g. "-mini") must come before their base model.
-# Prices as of November 2026: https://developers.openai.com/api/docs/pricing
+# (模式, 输入 $/百万 token, 输出 $/百万 token) - 首个匹配生效，因此更
+# 具体的模式（如 "-mini"）必须排在其基础模型之前。
+# 价格截至 2026 年 11 月：https://developers.openai.com/api/docs/pricing
 OPENAI_MODEL_PRICING = (
     (("gpt-6.1-sol",), 2.0, 10.0),
     (("gpt-6.1-terra",), 1.0, 5.0),
@@ -77,19 +76,19 @@ ANTHROPIC_US_INFERENCE_GEO_MODELS = (
 
 
 def estimate_llm_cost(input_content: str, output_content: str) -> float:
-    """Estimate the cost of an LLM API call based on input and output content.
+    """根据输入和输出内容估算 LLM API 调用的成本。
 
-    Cost estimation is based on OpenAI pricing and may vary for other models.
+    成本估算基于 OpenAI 定价，其他模型可能有所不同。
 
-    Args:
-        input_content: The input text sent to the LLM.
-        output_content: The output text received from the LLM.
+    参数：
+        input_content: 发送给 LLM 的输入文本。
+        output_content: 从 LLM 接收的输出文本。
 
-    Returns:
-        The estimated cost in USD.
+    返回：
+        以美元计的估算成本。
     """
-    # Callbacks and stream paths may pass None before content is available.
-    # tiktoken.encode(None) raises TypeError and abort sq col of the caller.
+    # 回调和流式路径可能在内容可用之前传入 None。
+    # tiktoken.encode(None) 会抛出 TypeError 并中断调用方。
     if input_content is None:
         input_content = ""
     if output_content is None:
@@ -142,12 +141,12 @@ def _extract_anthropic_usage(
     response_metadata: Mapping[str, Any] | None = None,
     usage_metadata: Mapping[str, Any] | Any | None = None,
 ) -> dict[str, int] | None:
-    """Extract Anthropic usage including prompt-cache token fields.
+    """提取 Anthropic 用量，包括提示词缓存 token 字段。
 
-    Anthropic Messages usage may include:
+    Anthropic Messages 的用量可能包括：
     - input_tokens / output_tokens
-    - cache_creation_input_tokens (billed ~1.25x input)
-    - cache_read_input_tokens (billed ~0.1x input)
+    - cache_creation_input_tokens（按约 1.25 倍输入计费）
+    - cache_read_input_tokens（按约 0.1 倍输入计费）
     """
     metadata = _mapping_to_dict(response_metadata)
     usage = _mapping_to_dict(metadata.get("usage"))
@@ -223,8 +222,8 @@ def calculate_anthropic_cost(
 
     input_price_per_mtok, output_price_per_mtok = pricing
     multiplier = _get_anthropic_pricing_multiplier(model_name, request_options=request_options)
-    # Anthropic prompt caching: cache writes ~1.25x input, cache reads ~0.1x input.
-    # input_tokens is non-cache input only; cache fields are billed separately.
+    # Anthropic 提示词缓存：缓存写入约 1.25 倍输入，缓存读取约 0.1 倍输入。
+    # input_tokens 仅指非缓存输入；缓存字段单独计费。
     cache_write_price_per_mtok = input_price_per_mtok * 1.25
     cache_read_price_per_mtok = input_price_per_mtok * 0.1
     input_cost = usage["input_tokens"] * input_price_per_mtok / 1_000_000
@@ -241,14 +240,12 @@ def calculate_anthropic_cost(
 def _extract_usage_tokens(
     usage_metadata: Mapping[str, Any] | Any | None,
 ) -> tuple[int, int, int] | None:
-    """Returns (input_tokens, output_tokens, cache_read_tokens).
+    """返回 (input_tokens, output_tokens, cache_read_tokens)。
 
-    cache_read_tokens is the portion of input_tokens that hit the
-    provider's prompt cache (LangChain's standardized
-    ``input_token_details.cache_read``) and should be billed at
-    OPENAI_CACHED_INPUT_DISCOUNT instead of the standard input rate.
-    Defaults to 0 when the response doesn't report cache details, so
-    non-cached calls are unaffected.
+    cache_read_tokens 是 input_tokens 中命中提供者提示词缓存的部分
+    （LangChain 标准化的 ``input_token_details.cache_read``），
+    应按 OPENAI_CACHED_INPUT_DISCOUNT 而非标准输入费率计费。
+    当响应未报告缓存明细时默认为 0，因此非缓存调用不受影响。
     """
     usage = _mapping_to_dict(usage_metadata)
     input_tokens = usage.get("input_tokens")
@@ -289,16 +286,14 @@ def calculate_llm_cost(
         if anthropic_cost is not None:
             return anthropic_cost
 
-    # Prefer the API-reported token usage over tiktoken estimates on
-    # serialized message dicts; the latter overcounts input and misses
-    # reasoning tokens entirely.
+    # 在序列化消息字典上，优先使用 API 报告的 token 用量而非 tiktoken 估算；
+    # 后者会高估输入且完全遗漏推理 token。
     usage_tokens = _extract_usage_tokens(usage_metadata)
     if usage_tokens is not None:
         input_tokens, output_tokens, cache_read_tokens = usage_tokens
-        # cache_read_tokens is a subset of input_tokens, not additional
-        # tokens -- split input_tokens into its non-cached and cached
-        # portions so the cached share is priced at the discount rate
-        # instead of the full input rate.
+        # cache_read_tokens 是 input_tokens 的子集而非额外的 token ——
+        # 将 input_tokens 拆分为非缓存和缓存两部分，使缓存部分按折扣
+        # 费率而非完整输入费率计价。
         non_cached_input_tokens = input_tokens - cache_read_tokens
         pricing = _get_openai_pricing(model)
         if pricing is not None:
@@ -325,14 +320,14 @@ def calculate_llm_cost(
 
 
 def estimate_embedding_cost(model: str, docs: list) -> float:
-    """Estimate the cost of embedding documents.
+    """估算文档嵌入的成本。
 
-    Args:
-        model: The embedding model name.
-        docs: List of documents to embed.
+    参数：
+        model: 嵌入模型名称。
+        docs: 要嵌入的文档列表。
 
-    Returns:
-        The estimated embedding cost in USD.
+    返回：
+        以美元计的估算嵌入成本。
     """
     if not docs:
         return 0.0
@@ -343,10 +338,10 @@ def estimate_embedding_cost(model: str, docs: list) -> float:
         try:
             encoding = tiktoken.encoding_for_model(model)
         except (KeyError, ValueError):
-            # tiktoken only knows OpenAI model names. Non-OpenAI embedding
-            # providers (Ollama, Cohere, Nomic, HuggingFace, ...) raise KeyError
-            # here, which would otherwise abort cost tracking mid-research. Fall
-            # back to the default OpenAI encoding for a best-effort token estimate.
+            # tiktoken 只认识 OpenAI 模型名。非 OpenAI 嵌入提供者
+            # （Ollama、Cohere、Nomic、HuggingFace 等）在此处抛出 KeyError，
+            # 否则会中断研究过程中的成本跟踪。回退到默认的 OpenAI 编码
+            # 以获得尽力而为的 token 估算。
             encoding = tiktoken.get_encoding(ENCODING_MODEL)
 
     if isinstance(docs, (str, bytes)) or not hasattr(docs, "__iter__"):

@@ -7,15 +7,15 @@ from gpt_researcher import GPTResearcher
 
 
 def build_research_tools(task: dict, cost_tracker: dict | None = None):
-    """Build the research tools with the task's source config bound in.
+    """构建研究工具，并把任务的 source 配置绑定进去。
 
-    The report source ("web", "local" or "hybrid") is task configuration, not
-    something the agent should decide per call, so it is closed over here
-    rather than exposed as a tool argument. For "local" and "hybrid", set the
-    DOC_PATH env var to your documents directory.
+    报告来源（"web"、"local" 或 "hybrid"）是任务配置，
+    不是智能体每次调用应决定的东西，因此这里把它闭包捕获，
+    而不是作为工具参数暴露。对 "local" 和 "hybrid"，把
+    DOC_PATH 环境变量设为你的文档目录。
 
-    Pass a dict as cost_tracker to accumulate GPT Researcher API costs under
-    its "total" key.
+    传入一个字典作为 cost_tracker，即可在其 "total" 键下累积
+    GPT Researcher API 成本。
     """
     report_source = task.get("source", "web")
 
@@ -24,13 +24,12 @@ def build_research_tools(task: dict, cost_tracker: dict | None = None):
             cost_tracker["total"] = cost_tracker.get("total", 0.0) + researcher.get_costs()
 
     async def quick_search(query: str) -> str:
-        """Run a fast web search and return the top results with snippets and URLs.
+        """执行快速网页搜索，返回带摘要和 URL 的顶部结果。
 
-        Use this to scope a topic, verify a fact, or gather just enough context
-        to plan a report outline. Results are raw snippets - iterate with
-        refined queries if the first search does not surface what you need.
-        For in-depth, citation-grade research on a section, use deep_research
-        instead.
+        用于确定话题范围、核实一个事实，或收集刚好够规划报告大纲的
+        上下文。结果是原始摘要 —— 如果首次搜索没有浮现所需内容，
+        用细化查询迭代。如需对某章节做深入的、引用级别的研究，
+        改用 deep_research。
         """
         researcher = GPTResearcher(query=query, report_type="research_report", verbose=False)
         results = await researcher.quick_search(query)
@@ -45,18 +44,17 @@ def build_research_tools(task: dict, cost_tracker: dict | None = None):
         return results or "No results found."
 
     async def deep_research(query: str, parent_query: str = "") -> str:
-        """Run the full GPT Researcher pipeline on a query.
+        """对查询运行完整的 GPT Researcher 管线。
 
-        Plans sub-queries, gathers and validates dozens of sources (web pages
-        and/or local documents, depending on the task configuration), and
-        returns a detailed markdown research report with in-text citations and
-        a reference list. This is slow (a few minutes) and thorough - use it
-        once per report section, not for quick lookups.
+        规划子查询、收集并校验数十个来源（网页和/或本地文档，
+        取决于任务配置），并返回一份带行内引用和参考文献列表的
+        详细 Markdown 研究报告。此过程较慢（几分钟）但彻底 ——
+        每个报告章节用一次，不要用于快速查找。
 
-        Args:
-            query: The research question or section topic to investigate.
-            parent_query: The overall report topic, when researching a section
-                of a larger report. Keeps the research focused in context.
+        参数：
+            query: 要调查的研究问题或章节主题。
+            parent_query: 当研究更大报告的某个章节时的整体报告主题。
+                使研究在上下文中保持聚焦。
         """
         report_type = "subtopic_report" if parent_query else "research_report"
         researcher = GPTResearcher(

@@ -1,4 +1,4 @@
-"""HTML processing functions"""
+"""HTML 处理函数"""
 from __future__ import annotations
 
 from bs4 import BeautifulSoup
@@ -6,14 +6,14 @@ from requests.compat import urljoin
 
 
 def extract_hyperlinks(soup: BeautifulSoup, base_url: str) -> list[tuple[str, str]]:
-    """Extract hyperlinks from a BeautifulSoup object
+    """从 BeautifulSoup 对象提取超链接
 
-    Args:
-        soup (BeautifulSoup): The BeautifulSoup object
-        base_url (str): The base URL
+    参数：
+        soup (BeautifulSoup): BeautifulSoup 对象
+        base_url (str): 基础 URL
 
-    Returns:
-        List[Tuple[str, str]]: The extracted hyperlinks
+    返回：
+        List[Tuple[str, str]]: 提取的超链接
     """
     return [
         (link.text, urljoin(base_url, link["href"]))
@@ -22,12 +22,12 @@ def extract_hyperlinks(soup: BeautifulSoup, base_url: str) -> list[tuple[str, st
 
 
 def format_hyperlinks(hyperlinks: list[tuple[str, str]]) -> list[str]:
-    """Format hyperlinks to be displayed to the user
+    """格式化超链接以展示给用户
 
-    Args:
-        hyperlinks (List[Tuple[str, str]]): The hyperlinks to format
+    参数：
+        hyperlinks (List[Tuple[str, str]]): 要格式化的超链接
 
-    Returns:
-        List[str]: The formatted hyperlinks
+    返回：
+        List[str]: 格式化后的超链接
     """
     return [f"{link_text} ({link_url})" for link_text, link_url in hyperlinks]

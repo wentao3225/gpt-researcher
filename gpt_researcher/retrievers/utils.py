@@ -1,7 +1,6 @@
-"""Utility functions for GPT Researcher retrievers.
+"""GPT Researcher 检索器的工具函数。
 
-This module provides helper functions and constants used by the
-various search retriever implementations.
+此模块提供各种搜索检索器实现使用的辅助函数和常量。
 """
 
 import importlib.util
@@ -13,15 +12,15 @@ logger = logging.getLogger(__name__)
 
 async def stream_output(log_type, step, content, websocket=None, with_data=False, data=None):
     """
-    Stream output to the client.
+    将输出流式传输到客户端。
     
-    Args:
-        log_type (str): The type of log
-        step (str): The step being performed
-        content (str): The content to stream
-        websocket: The websocket to stream to
-        with_data (bool): Whether to include data
-        data: Additional data to include
+    参数：
+        log_type (str): 日志类型
+        step (str): 正在执行的步骤
+        content (str): 要流式传输的内容
+        websocket: 要流式传输到的 websocket
+        with_data (bool): 是否包含数据
+        data: 额外的数据
     """
     if websocket:
         try:
@@ -43,13 +42,13 @@ async def stream_output(log_type, step, content, websocket=None, with_data=False
 
 def check_pkg(pkg: str) -> None:
     """
-    Checks if a package is installed and raises an error if not.
+    检查包是否已安装，未安装则抛出错误。
     
-    Args:
-        pkg (str): The package name
+    参数：
+        pkg (str): 包名
     
-    Raises:
-        ImportError: If the package is not installed
+    抛出：
+        ImportError: 如果包未安装
     """
     if not importlib.util.find_spec(pkg):
         pkg_kebab = pkg.replace("_", "-")
@@ -58,7 +57,7 @@ def check_pkg(pkg: str) -> None:
             f"`pip install -U {pkg_kebab}`"
         )
 
-# Valid retrievers for fallback
+# 用于回退的有效检索器
 VALID_RETRIEVERS = [
     "tavily",
     "groundroute",
@@ -85,17 +84,17 @@ VALID_RETRIEVERS = [
 
 def get_all_retriever_names():
     """
-    Get all available retriever names
-    :return: List of all available retriever names
+    获取所有可用的检索器名称
+    :return: 所有可用检索器名称的列表
     :rtype: list
     """
     try:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         
-        # Get all items in the current directory
+        # 获取当前目录中的所有条目
         all_items = os.listdir(current_dir)
         
-        # Filter out only the directories, excluding __pycache__
+        # 只过滤目录，排除 __pycache__
         retrievers = [
             item for item in all_items 
             if os.path.isdir(os.path.join(current_dir, item)) and not item.startswith('__')
@@ -108,7 +107,7 @@ def get_all_retriever_names():
 
 
 def get_plugin_retriever_names():
-    """Names of retrievers that installed packages register as plugins."""
+    """已安装包注册为插件的检索器名称。"""
     from importlib.metadata import entry_points
 
     from gpt_researcher.actions.retriever import RETRIEVER_ENTRY_POINT_GROUP

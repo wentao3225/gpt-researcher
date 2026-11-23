@@ -1,8 +1,7 @@
-"""Configuration management for GPT Researcher.
+"""GPT Researcher 配置管理。
 
-This module provides the Config class that manages all configuration
-settings for GPT Researcher including LLM providers, embeddings,
-retrievers, and various operational parameters.
+此模块提供 Config 类，管理 GPT Researcher 的所有配置项，
+包括 LLM 提供者、嵌入、检索器以及各类运行参数。
 """
 
 import json
@@ -19,25 +18,24 @@ from .variables.default import DEFAULT_CONFIG
 
 
 class Config:
-    """Configuration manager for GPT Researcher.
+    """GPT Researcher 配置管理器。
 
-    Handles loading, parsing, and managing all configuration settings
-    from files, environment variables, and defaults.
+    负责从文件、环境变量和默认值中加载、解析和管理所有配置项。
 
-    Attributes:
-        CONFIG_DIR: Directory containing configuration files.
-        config_path: Path to the configuration file.
-        llm_kwargs: Additional keyword arguments for LLM.
-        embedding_kwargs: Additional keyword arguments for embeddings.
+    属性：
+        CONFIG_DIR: 存放配置文件的目录。
+        config_path: 配置文件路径。
+        llm_kwargs: LLM 的额外关键字参数。
+        embedding_kwargs: 嵌入的额外关键字参数。
     """
 
     CONFIG_DIR = os.path.join(os.path.dirname(__file__), "variables")
 
     def __init__(self, config_path: str | None = None):
-        """Initialize the config class.
+        """初始化配置类。
 
-        Args:
-            config_path: Optional path to a JSON configuration file.
+        参数：
+            config_path: 可选的 JSON 配置文件路径。
         """
         self.config_path = config_path
         self.llm_kwargs: Dict[str, Any] = {}
@@ -52,13 +50,12 @@ class Config:
           self._set_doc_path(config_to_use)
 
     def _set_attributes(self, config: Dict[str, Any]) -> None:
-        """Set configuration attributes from config dictionary.
+        """从配置字典设置配置属性。
 
-        Merges environment variables with config file values, with
-        environment variables taking precedence.
+        将环境变量与配置文件的值合并，环境变量优先。
 
-        Args:
-            config: Dictionary of configuration key-value pairs.
+        参数：
+            config: 配置键值对字典。
         """
         for key, value in config.items():
             env_value = os.getenv(key)
@@ -66,7 +63,7 @@ class Config:
                 value = self.convert_env_value(key, env_value, BaseConfig.__annotations__[key])
             setattr(self, key.lower(), value)
 
-        # Handle RETRIEVER with default value
+        # 处理 RETRIEVER 的默认值
         retriever_env = os.environ.get("RETRIEVER", config.get("RETRIEVER", "tavily"))
         try:
             self.retrievers = self.parse_retrievers(retriever_env)
@@ -75,20 +72,20 @@ class Config:
             self.retrievers = ["tavily"]
 
     def _set_embedding_attributes(self) -> None:
-        """Parse and set embedding provider and model attributes."""
+        """解析并设置嵌入提供者和模型属性。"""
         self.embedding_provider, self.embedding_model = self.parse_embedding(
             self.embedding
         )
 
     def _set_llm_attributes(self) -> None:
-        """Parse and set LLM provider and model attributes for all LLM types."""
+        """为所有 LLM 类型解析并设置提供者和模型属性。"""
         self.fast_llm_provider, self.fast_llm_model = self.parse_llm(self.fast_llm)
         self.smart_llm_provider, self.smart_llm_model = self.parse_llm(self.smart_llm)
         self.strategic_llm_provider, self.strategic_llm_model = self.parse_llm(self.strategic_llm)
         self.reasoning_effort = self.parse_reasoning_effort(self.reasoning_effort)
 
     def _handle_deprecated_attributes(self) -> None:
-        """Handle deprecated configuration attributes with warnings."""
+        """处理已弃用的配置属性并发出警告。"""
         if os.getenv("EMBEDDING_PROVIDER") is not None:
             warnings.warn(
                 "EMBEDDING_PROVIDER is deprecated and will be removed soon. Use EMBEDDING instead.",
@@ -148,10 +145,10 @@ class Config:
 
     @classmethod
     def load_config(cls, config_path: str | None) -> Dict[str, Any]:
-        """Load a configuration by name.
+        """按名称加载配置。
 
-        Always returns a fresh copy, so mutable defaults such as ``LLM_KWARGS``
-        or ``MCP_SERVERS`` are never shared between ``Config`` instances.
+        总是返回全新副本，因此 ``LLM_KWARGS``、``MCP_SERVERS`` 等可变默认值
+        不会在多个 ``Config`` 实例之间共享。
         """
         config_path = config_path or os.environ.get("CONFIG_PATH")
         if not config_path:
@@ -168,22 +165,22 @@ class Config:
         with open(config_path, "r", encoding="utf-8") as f:
             custom_config = json.load(f)
 
-        # Merge with default config to ensure all keys are present
+        # 与默认配置合并，确保所有键都存在
         merged_config = deepcopy(DEFAULT_CONFIG)
         merged_config.update(custom_config)
         return merged_config
 
     @classmethod
     def list_available_configs(cls) -> List[str]:
-        """List all available configuration names."""
+        """列出所有可用的配置名称。"""
         configs = ["default"]
         for file in os.listdir(cls.CONFIG_DIR):
             if file.endswith(".json"):
-                configs.append(file[:-5])  # Remove .json extension
+                configs.append(file[:-5])  # 去掉 .json 扩展名
         return configs
 
     def parse_retrievers(self, retriever_str: str) -> List[str]:
-        """Parse the retriever string into a list of retrievers and validate them."""
+        """将检索器字符串解析为列表并校验其有效性。"""
         from ..retrievers.utils import get_all_retriever_names
         
         retrievers = [retriever.strip()
@@ -199,7 +196,7 @@ class Config:
 
     @staticmethod
     def parse_llm(llm_str: str | None) -> tuple[str | None, str | None]:
-        """Parse llm string into (llm_provider, llm_model)."""
+        """将 LLM 字符串解析为 (llm_provider, llm_model)。"""
         from gpt_researcher.llm_provider.generic.base import _SUPPORTED_PROVIDERS
 
         if llm_str is None:
@@ -219,7 +216,7 @@ class Config:
 
     @staticmethod
     def parse_reasoning_effort(reasoning_effort_str: str | None) -> str | None:
-        """Parse reasoning effort string into (reasoning_effort)."""
+        """将推理力度字符串解析为 (reasoning_effort)。"""
         if reasoning_effort_str is None:
             return ReasoningEfforts.Medium.value
         if reasoning_effort_str not in [effort.value for effort in ReasoningEfforts]:
@@ -228,7 +225,7 @@ class Config:
 
     @staticmethod
     def parse_embedding(embedding_str: str | None) -> tuple[str | None, str | None]:
-        """Parse embedding string into (embedding_provider, embedding_model)."""
+        """将嵌入字符串解析为 (embedding_provider, embedding_model)。"""
         from gpt_researcher.memory.embeddings import _SUPPORTED_PROVIDERS
 
         if embedding_str is None:
@@ -247,20 +244,20 @@ class Config:
             )
 
     def validate_doc_path(self):
-        """Ensure that the folder exists at the doc path"""
+        """确保文档路径对应的文件夹存在"""
         os.makedirs(self.doc_path, exist_ok=True)
 
     @staticmethod
     def convert_env_value(key: str, env_value: str, type_hint: Type) -> Any:
-        """Convert environment variable to the appropriate type based on the type hint."""
+        """根据类型提示将环境变量转换为相应的类型。"""
         origin = get_origin(type_hint)
         args = get_args(type_hint)
 
         if origin is Union:
-            # Handle Union types (e.g., Union[str, None] / Optional[str]).
-            # Check the None sentinel BEFORE non-None args: for Optional[str],
-            # str conversion never raises, so looping str-first permanently
-            # shadowed the none/null/"" → None branch (see issue #1899).
+            # 处理 Union 类型（如 Union[str, None] / Optional[str]）。
+            # 先检查 None 哨兵值再检查非 None 参数：对 Optional[str] 而言，
+            # str 转换永远不会抛异常，因此先按 str 处理会永久遮蔽
+            # none/null/"" → None 的分支（见 issue #1899）。
             if type(None) in args and env_value.lower() in ("none", "null", ""):
                 return None
             for arg in args:
@@ -281,8 +278,8 @@ class Config:
         elif type_hint in (str, Any):
             return env_value
         elif type_hint is list or origin is list or origin is List:
-            # Env values are often hand-edited (trailing commas, single quotes).
-            # Bare `list` has get_origin(None); typing.List[...] has origin list.
+            # 环境变量值通常是手工编辑的（尾随逗号、单引号等）。
+            # 裸 `list` 的 get_origin 为 None；typing.List[...] 的 origin 为 list。
             try:
                 value = json_repair.loads(env_value)
             except Exception as exc:
@@ -303,18 +300,18 @@ class Config:
 
 
     def set_verbose(self, verbose: bool) -> None:
-        """Set the verbosity level."""
+        """设置日志详细程度。"""
         self.llm_kwargs["verbose"] = verbose
 
     def get_mcp_server_config(self, name: str) -> dict:
         """
-        Get the configuration for an MCP server.
+        获取指定 MCP 服务器的配置。
         
-        Args:
-            name (str): The name of the MCP server to get the config for.
+        参数：
+            name (str): 要获取配置的 MCP 服务器名称。
                 
-        Returns:
-            dict: The server configuration, or an empty dict if the server is not found.
+        返回：
+            dict: 服务器配置；如果未找到该服务器则返回空字典。
         """
         if not name or not self.mcp_servers:
             return {}

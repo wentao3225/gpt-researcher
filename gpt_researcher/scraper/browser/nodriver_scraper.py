@@ -122,7 +122,7 @@ class NoDriverScraper:
                     yield
 
             except Exception as e:
-                # Log error but don't block the request
+                # 记录错误但不阻塞请求
                 NoDriverScraper.logger.warning(
                     f"Rate limiting error for {url}: {str(e)}"
                 )
@@ -156,13 +156,13 @@ class NoDriverScraper:
 
         async with cls.browsers_lock:
             if len(cls.browsers) == 0:
-                # No browsers available, create new one
+                # 没有可用浏览器，创建新的
                 return await create_browser()
 
-            # Load balancing: Get browser with lowest number of tabs
+            # 负载均衡：获取标签页数最少的浏览器
             browser = min(cls.browsers, key=lambda b: b.processing_count)
 
-            # If all browsers are heavily loaded and we can create more
+            # 如果所有浏览器负载都很重且还能创建更多
             if (
                 browser.processing_count >= cls.browser_load_threshold
                 and len(cls.browsers) < cls.max_browsers
@@ -188,7 +188,7 @@ class NoDriverScraper:
         self.debug = False
 
     async def scrape_async(self) -> Tuple[str, list[dict], str]:
-        """Returns tuple of (text, image_urls, title)"""
+        """返回 (text, image_urls, title) 元组"""
         if not self.url:
             return (
                 "A URL was not specified, cancelling request to browse website.",
@@ -207,9 +207,9 @@ class NoDriverScraper:
 
             page = await browser.get(self.url)
             if page is None:
-                # browser.get() increments processing_count before returning;
-                # a None result means the connection timed out. Decrement to
-                # avoid leaking the slot and deadlocking the browser pool.
+                # browser.get() 在返回前递增 processing_count；
+                # None 结果意味着连接超时。递减以避免泄漏槽位
+                # 并使浏览器池死锁。
                 browser.processing_count -= 1
                 return "Browser failed to open page (returned None)", [], ""
             await browser.wait_or_timeout(page, "complete", 2)

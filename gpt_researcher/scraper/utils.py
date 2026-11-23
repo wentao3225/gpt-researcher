@@ -1,7 +1,6 @@
-"""Utility functions for web scraping.
+"""网页抓取的工具函数。
 
-This module provides helper functions for extracting content, images,
-and processing HTML from web pages.
+此模块提供从网页提取内容、图片和处理 HTML 的辅助函数。
 """
 
 import hashlib
@@ -14,58 +13,58 @@ from bs4 import BeautifulSoup
 
 
 def get_relevant_images(soup: BeautifulSoup, url: str) -> list:
-    """Extract relevant images from the page"""
+    """从页面提取相关图片"""
     image_urls = []
     
     try:
         if soup is None:
             return []
-        # Find all img tags with src attribute
+        # 查找所有带 src 属性的 img 标签
         all_images = soup.find_all('img', src=True)
         
         for img in all_images:
             img_src = urljoin(url, img['src'])
             if img_src.startswith(('http://', 'https://')):
                 score = 0
-                # Check for relevant classes
+                # 检查相关类名
                 classes = img.get("class") or []
                 if isinstance(classes, str):
                     classes = classes.split()
                 elif not isinstance(classes, (list, tuple, set)):
                     classes = []
                 if any(cls in classes for cls in ['header', 'featured', 'hero', 'thumbnail', 'main', 'content']):
-                    score = 4  # Higher score
-                # Check for size attributes
+                    score = 4  # 更高分数
+                # 检查尺寸属性
                 elif img.get('width') and img.get('height'):
                     width = parse_dimension(img['width'])
                     height = parse_dimension(img['height'])
                     if width and height:
                         if width >= 2000 and height >= 1000:
-                            score = 3  # Medium score (very large images)
+                            score = 3  # 中等分数（超大图片）
                         elif width >= 1600 or height >= 800:
-                            score = 2  # Lower score
+                            score = 2  # 较低分数
                         elif width >= 800 or height >= 500:
-                            score = 1  # Lowest score
+                            score = 1  # 最低分数
                         elif width >= 500 or height >= 300:
-                            score = 0  # Lowest score
+                            score = 0  # 最低分数
                         else:
-                            continue  # Skip small images
+                            continue  # 跳过小图片
                 
                 image_urls.append({'url': img_src, 'score': score})
         
-        # Sort images by score (highest first)
+        # 按分数排序图片（最高在前）
         sorted_images = sorted(image_urls, key=lambda x: x['score'], reverse=True)
         
-        return sorted_images[:10]  # Ensure we don't return more than 10 images in total
+        return sorted_images[:10]  # 确保总共返回不超过 10 张图片
     
     except Exception as e:
         logging.error(f"Error in get_relevant_images: {e}")
         return []
 
 def parse_dimension(value: str) -> int:
-    """Parse dimension value, handling px units"""
-    # HTML width/height attrs are often missing or non-string; callers pass
-    # img.get('width') which may be None.
+    """解析尺寸值，处理 px 单位"""
+    # HTML 的 width/height 属性经常缺失或非字符串；调用方传入的
+    # img.get('width') 可能为 None。
     if value is None:
         return None
     if not isinstance(value, str):
@@ -75,23 +74,22 @@ def parse_dimension(value: str) -> int:
             logging.debug("Could not parse dimension value %r: %s", value, e)
             return None
     if value.lower().endswith('px'):
-        value = value[:-2]  # Remove 'px' suffix
+        value = value[:-2]  # 去掉 'px' 后缀
     try:
-        # Convert to float first to handle decimal values like '409.12'
+        # 先转为浮点数以处理 '409.12' 这类小数值
         return int(float(value))
     except (ValueError, TypeError) as e:
-        # Non-numeric dimensions (e.g. '100%', 'auto', '50em') are common and
-        # expected on real pages; log at debug level instead of spamming stdout.
+        # 非数字尺寸（如 '100%'、'auto'、'50em'）在真实页面上很常见；
+        # 以 debug 级别记录而不是刷屏 stdout。
         logging.debug("Could not parse dimension value %r: %s", value, e)
         return None
 
 def extract_title(soup: BeautifulSoup) -> str:
-    """Extract the title text from the BeautifulSoup object.
+    """从 BeautifulSoup 对象提取标题文本。
 
-    Always returns a string. An empty ``<title></title>`` yields ``""`` (not
-    ``None``), and a title containing nested markup (e.g.
-    ``<title><span>x</span></title>``) yields its text content rather than the
-    raw inner HTML.
+    始终返回字符串。空的 ``<title></title>`` 产生 ``""``（而非
+    ``None``），含嵌套标记的标题（如 ``<title><span>x</span></title>``）
+    产生其文本内容而非原始内部 HTML。
     """
     title_tag = soup.title
     if not title_tag:
@@ -99,26 +97,25 @@ def extract_title(soup: BeautifulSoup) -> str:
     return title_tag.get_text(strip=True)
 
 def get_image_hash(image_url: str) -> str:
-    """Calculate a simple hash based on the image filename and essential query parameters.
+    """基于图片文件名和关键查询参数计算简单哈希。
 
-    Always returns a string. On error, returns an empty string rather than
-    None, so callers that use the result as a dict key or in string
-    concatenation do not crash with TypeError.
+    始终返回字符串。出错时返回空字符串而非 None，使把结果用作
+    字典键或字符串拼接的调用方不会因 TypeError 崩溃。
     """
     try:
         parsed_url = urlparse(image_url)
 
-        # Extract the filename
+        # 提取文件名
         filename = parsed_url.path.split('/')[-1]
 
-        # Extract essential query parameters (e.g., 'url' for CDN-served images)
+        # 提取关键查询参数（如 CDN 提供图片的 'url'）
         query_params = parse_qs(parsed_url.query)
         essential_params = query_params.get('url', [])
 
-        # Combine filename and essential parameters
+        # 合并文件名和关键参数
         image_identifier = filename + ''.join(essential_params)
 
-        # Calculate hash
+        # 计算哈希
         return hashlib.md5(image_identifier.encode()).hexdigest()
     except Exception as e:
         logging.error(f"Error calculating image hash for {image_url}: {e}")
@@ -126,7 +123,7 @@ def get_image_hash(image_url: str) -> str:
 
 
 def clean_soup(soup: BeautifulSoup) -> BeautifulSoup:
-    """Clean the soup by removing unwanted tags"""
+    """通过移除不需要的标签来清理 soup"""
     for tag in soup.find_all(
         [
             "script",
@@ -143,7 +140,7 @@ def clean_soup(soup: BeautifulSoup) -> BeautifulSoup:
 
     disallowed_class_set = {"nav", "menu", "sidebar", "footer"}
 
-    # clean tags with certain classes
+    # 清理带特定类名的标签
     def does_tag_have_disallowed_class(elem) -> bool:
         if not isinstance(elem, bs4.Tag):
             return False
@@ -158,27 +155,27 @@ def clean_soup(soup: BeautifulSoup) -> BeautifulSoup:
     return soup
 
 
-# Elements a browser lays out as blocks. Each one starts a new line of extracted
-# text, while the text of any other element stays in the line around it.
+# 浏览器按块布局的元素。每个元素都开启提取文本的新一行，
+# 而其他元素的文本保持在围绕它的行内。
 _BLOCK_TAGS = frozenset(
     "address article aside blockquote body caption center dd details dialog dir div dl dt"
     " fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hgroup hr html"
     " legend li listing main menu nav ol optgroup option p plaintext pre search section"
     " summary table tbody td textarea tfoot th thead title tr ul xmp".split()
 )
-# Whitespace inside these elements is content, so their text is kept as written.
+# 这些元素内部的空白是内容，因此其文本按原样保留。
 _PREFORMATTED_TAGS = frozenset(("listing", "plaintext", "pre", "textarea", "xmp"))
-# Inline boxes whose text never runs into the text next to them.
+# 文本从不与相邻文本连在一起的行内盒子。
 _BOX_TAGS = frozenset(("button", "select"))
-# Only these characters are whitespace in HTML. A no-break space is content.
+# HTML 中只有这些字符是空白。不换行空格是内容。
 _HTML_WHITESPACE = re.compile(r"[ \t\n\r\f]+")
 
 
 def _block_lines(soup: BeautifulSoup) -> list[str]:
-    """Return the text of the soup as one line per block element.
+    """以每个块元素一行的方式返回 soup 的文本。
 
-    ``soup.get_text(separator="\\n")`` puts every text node on its own line, so
-    a link or an emphasis split the sentence, and even the word, it sat in.
+    ``soup.get_text(separator="\\n")`` 把每个文本节点放在单独一行，
+    因此一个链接或强调会拆开它所在的句子，甚至单词。
     """
     lines: list[str] = []
     line: list[str] = []
@@ -189,7 +186,7 @@ def _block_lines(soup: BeautifulSoup) -> list[str]:
         if text.strip():
             lines.append(text)
 
-    # An explicit stack, so deeply nested markup cannot exhaust the recursion limit.
+    # 显式栈，使深层嵌套的标记不会耗尽递归限制。
     stack: list[tuple[bs4.PageElement, str]] = [(soup, "visit")]
     while stack:
         node, action = stack.pop()
@@ -213,8 +210,8 @@ def _block_lines(soup: BeautifulSoup) -> list[str]:
                     line.append(" ")
                     stack.append((node, "space"))
                 stack.extend((child, "visit") for child in reversed(node.contents))
-        # Script, style, template and comment strings are subclasses and are
-        # not page text, the same filter get_text() applies by default.
+        # Script、style、template 和 comment 字符串是子类，不是页面文本，
+        # 与 get_text() 默认应用的过滤器相同。
         elif type(node) in (bs4.NavigableString, bs4.CData):
             line.append(str(node))
     end_line()
@@ -222,10 +219,10 @@ def _block_lines(soup: BeautifulSoup) -> list[str]:
 
 
 def get_text_from_soup(soup: BeautifulSoup) -> str:
-    """Get the relevant text from the soup with improved filtering"""
+    """以改进的过滤从 soup 获取相关文本"""
     if soup is None:
         return ""
     text = "\n".join(_block_lines(soup))
-    # Remove excess whitespace
+    # 移除多余空白
     text = re.sub(r"\s{2,}", " ", text)
     return text

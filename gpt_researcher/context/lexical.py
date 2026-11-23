@@ -1,9 +1,8 @@
-"""Keyword (BM25) relevance filtering of scraped content.
+"""抓取内容的关键词（BM25）相关性过滤。
 
-The dependency-free context filter: no API, no model, no embeddings. Chunks
-are ranked by BM25, the lexical scoring behind most search engines, computed
-over the chunks of the pages scraped for one sub-query. Runs locally in
-milliseconds.
+零依赖的上下文过滤器：无 API、无模型、无嵌入。分块按 BM25 排序
+（大多数搜索引擎背后的词法评分），针对为单个子查询抓取的页面
+分块计算。本地运行，毫秒级完成。
 """
 
 import math
@@ -29,7 +28,7 @@ yours yourself yourselves
 
 
 def _stem(token: str) -> str:
-    """Light plural stripping so "batteries" matches "battery" and "costs" matches "cost"."""
+    """轻度去复数，使 "batteries" 匹配 "battery"、"costs" 匹配 "cost"。"""
     if len(token) <= 4 or token.endswith("ss"):
         return token
     if token.endswith("ies"):
@@ -46,7 +45,7 @@ def tokenize(text: str) -> list[str]:
 
 
 def bm25_scores(query: str, passages: list[str], k1: float = 1.5, b: float = 0.75) -> list[float]:
-    """BM25 score of every passage for ``query``, with IDF taken from the passages themselves."""
+    """每个段落对 ``query`` 的 BM25 分数，IDF 取自段落本身。"""
     docs = [Counter(tokenize(p)) for p in passages]
     if not docs:
         return []
@@ -67,11 +66,11 @@ def bm25_scores(query: str, passages: list[str], k1: float = 1.5, b: float = 0.7
 
 
 class LexicalContextCompressor:
-    """Keeps the chunks with the highest BM25 score for the query.
+    """保留对查询 BM25 分数最高的分块。
 
-    ``relative_threshold`` drops chunks scoring below that fraction of the
-    best chunk, so a page with one relevant paragraph doesn't pull in its
-    filler just to fill the budget.
+    ``relative_threshold`` 会丢弃分数低于最佳分块该比例的分块，
+    这样一个只含一段相关文字的页面就不会为了填满预算而
+    把它的废话也带进来。
     """
 
     def __init__(
@@ -97,7 +96,7 @@ class LexicalContextCompressor:
         scores = bm25_scores(query, [c.page_content for c in chunks])
         best = max(scores, default=0.0)
         if best <= 0:
-            # No keyword overlap at all: fall back to the pages' opening chunks.
+            # 完全没有关键词重叠：回退到各页面的开头分块。
             return chunks[:max_results]
         ranked = sorted(range(len(chunks)), key=lambda i: (-scores[i], i))
         keep = [i for i in ranked if scores[i] >= self.relative_threshold * best][:max_results]
@@ -109,11 +108,11 @@ class LexicalContextCompressor:
 
 def rank_written_sections(query: str, sections: list[dict], max_results: int = 10,
                           relative_threshold: float = 0.5) -> list[str]:
-    """Previously written report sections most related to ``query``.
+    """与 ``query`` 最相关的先前写好的报告章节。
 
-    The keyword counterpart of ``WrittenContentCompressor``, used when no
-    embedding model is available. ``sections`` are
-    ``{"section_title": ..., "written_content": ...}`` dicts.
+    ``WrittenContentCompressor`` 的关键词对应版本，在没有嵌入模型
+    可用时使用。``sections`` 是
+    ``{"section_title": ..., "written_content": ...}`` 字典。
     """
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = [

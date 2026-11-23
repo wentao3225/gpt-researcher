@@ -1,7 +1,7 @@
-"""Context manager skill for GPT Researcher.
+"""GPT Researcher 的上下文管理器技能。
 
-This module provides the ContextManager class that handles context
-retrieval, compression, and similarity matching for research queries.
+此模块提供 ContextManager 类，处理研究查询的上下文
+检索、压缩和相似度匹配。
 """
 
 import asyncio
@@ -17,33 +17,32 @@ logger = logging.getLogger(__name__)
 
 
 class ContextManager:
-    """Manages context retrieval and compression for research.
+    """管理研究的上下文检索和压缩。
 
-    This class handles finding similar content based on queries,
-    managing context from various sources, and compressing content
-    for efficient processing.
+    此类处理基于查询查找相似内容、从各种来源
+    管理上下文，以及压缩内容以实现高效处理。
 
-    Attributes:
-        researcher: The parent GPTResearcher instance.
+    属性：
+        researcher: 上级 GPTResearcher 实例。
     """
 
     def __init__(self, researcher):
-        """Initialize the ContextManager.
+        """初始化 ContextManager。
 
-        Args:
-            researcher: The GPTResearcher instance that owns this manager.
+        参数：
+            researcher: 拥有此管理器的 GPTResearcher 实例。
         """
         self.researcher = researcher
 
     async def get_similar_content_by_query(self, query: str, pages: list) -> str:
-        """Get similar content from pages based on the query.
+        """根据查询从页面获取相似内容。
 
-        Args:
-            query: The search query to find similar content for.
-            pages: List of page content to search through.
+        参数：
+            query: 用于查找相似内容的搜索查询。
+            pages: 要搜索的页面内容列表。
 
-        Returns:
-            Compressed context string of relevant content.
+        返回：
+            相关内容的压缩上下文字符串。
         """
         if self.researcher.verbose:
             await stream_output(
@@ -64,14 +63,14 @@ class ContextManager:
         )
 
     async def get_similar_content_by_query_with_vectorstore(self, query: str, filter: dict | None) -> str:
-        """Get similar content from vectorstore based on the query.
+        """根据查询从向量库获取相似内容。
 
-        Args:
-            query: The search query to find similar content for.
-            filter: Optional filter dictionary for vectorstore queries.
+        参数：
+            query: 用于查找相似内容的搜索查询。
+            filter: 向量库查询的可选过滤字典。
 
-        Returns:
-            Compressed context string of relevant content from vectorstore.
+        返回：
+            来自向量库的相关内容的压缩上下文字符串。
         """
         if self.researcher.verbose:
             await stream_output(
@@ -93,19 +92,19 @@ class ContextManager:
         written_contents: List[Dict],
         max_results: int = 10
     ) -> List[str]:
-        """Get similar written contents based on draft section titles.
+        """根据草稿章节标题获取相似的已写内容。
 
-        Searches for relevant previously written content that matches
-        the current subtopic and draft section titles.
+        搜索与当前子主题和草稿章节标题匹配的
+        相关先前已写内容。
 
-        Args:
-            current_subtopic: The current subtopic being written.
-            draft_section_titles: List of draft section title strings.
-            written_contents: List of previously written content dictionaries.
-            max_results: Maximum number of results to return.
+        参数：
+            current_subtopic: 当前正在撰写的子主题。
+            draft_section_titles: 草稿章节标题字符串列表。
+            written_contents: 先前已写内容的字典列表。
+            max_results: 返回结果的最大数量。
 
-        Returns:
-            List of relevant written content strings.
+        返回：
+            相关已写内容字符串列表。
         """
         all_queries = [current_subtopic] + draft_section_titles
 
@@ -125,16 +124,16 @@ class ContextManager:
         similarity_threshold: float = 0.5,
         max_results: int = 10
     ) -> List[str]:
-        """Get similar written contents for a single query.
+        """为单个查询获取相似的已写内容。
 
-        Args:
-            query: The query to find similar content for.
-            written_contents: List of written content dictionaries.
-            similarity_threshold: Minimum similarity score threshold.
-            max_results: Maximum number of results to return.
+        参数：
+            query: 用于查找相似内容的查询。
+            written_contents: 已写内容字典列表。
+            similarity_threshold: 最低相似度分数阈值。
+            max_results: 返回结果的最大数量。
 
-        Returns:
-            List of similar written content strings.
+        返回：
+            相似已写内容字符串列表。
         """
         if self.researcher.verbose:
             await stream_output(
@@ -147,8 +146,8 @@ class ContextManager:
         try:
             embeddings = self.researcher.memory.get_embeddings()
         except Exception as e:
-            # No usable embedding model (none configured, or its package or key
-            # is missing): rank the written sections by keywords instead.
+            # 没有可用的嵌入模型（未配置，或它的包或密钥缺失）：
+            # 改为按关键词排序已写章节。
             logger.info(f"Embeddings unavailable ({e}); ranking written content by keywords")
             return rank_written_sections(query, written_contents, max_results=max_results)
 

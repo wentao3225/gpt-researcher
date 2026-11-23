@@ -1,11 +1,11 @@
-"""Image generation provider for GPT Researcher.
+"""GPT Researcher 的图片生成提供者。
 
-This module provides image generation capabilities using Google's Gemini/Imagen
-models via the google.genai SDK.
+此模块通过 google.genai SDK 使用 Google 的 Gemini/Imagen 模型
+提供图片生成能力。
 
-Supported models:
-- Gemini image models (free tier): models/gemini-2.5-flash-image
-- Imagen models (requires billing): imagen-4.0-generate-001
+支持的模型：
+- Gemini 图片模型（免费层）：models/gemini-2.5-flash-image
+- Imagen 模型（需要计费）：imagen-4.0-generate-001
 """
 
 import asyncio
@@ -20,15 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 class ImageGeneratorProvider:
-    """Provider for generating images using Google's Gemini/Imagen models.
+    """使用 Google 的 Gemini/Imagen 模型生成图片的提供者。
     
-    Attributes:
-        model_name: The model to use for image generation.
-        api_key: Google API key for authentication.
-        output_dir: Directory to save generated images.
+    属性：
+        model_name: 用于图片生成的模型。
+        api_key: 用于认证的 Google API 密钥。
+        output_dir: 保存生成图片的目录。
     """
     
-    # Gemini models use generate_content with inline_data response
+    # Gemini 模型使用 generate_content 和 inline_data 响应
     GEMINI_IMAGE_MODELS = [
         "models/gemini-2.5-flash-image",
         "gemini-2.5-flash-image",
@@ -36,7 +36,7 @@ class ImageGeneratorProvider:
         "gemini-3-pro-image-preview",
     ]
     
-    # Imagen models use generate_images (requires billing)
+    # Imagen 模型使用 generate_images（需要计费）
     IMAGEN_MODELS = [
         "imagen-4.0-generate-001",
         "imagen-4.0-fast-generate-001",
@@ -51,12 +51,12 @@ class ImageGeneratorProvider:
         api_key: Optional[str] = None,
         output_dir: str = "outputs",
     ):
-        """Initialize the ImageGeneratorProvider.
+        """初始化 ImageGeneratorProvider。
         
-        Args:
-            model_name: The model to use. Defaults to models/gemini-2.5-flash-image.
-            api_key: Google API key. If not provided, reads from GOOGLE_API_KEY env var.
-            output_dir: Base directory for outputs (images will be in output_dir/images/).
+        参数：
+            model_name: 要使用的模型。默认为 models/gemini-2.5-flash-image。
+            api_key: Google API 密钥。未提供时从 GOOGLE_API_KEY 环境变量读取。
+            output_dir: 输出的基础目录（图片将位于 output_dir/images/）。
         """
         self.model_name = model_name or self.DEFAULT_MODEL
         self.api_key = api_key or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -73,7 +73,7 @@ class ImageGeneratorProvider:
             )
     
     def _ensure_client(self):
-        """Ensure the Google GenAI client is initialized."""
+        """确保 Google GenAI 客户端已初始化。"""
         if self._client is None:
             try:
                 from google import genai
@@ -89,8 +89,8 @@ class ImageGeneratorProvider:
                 raise
     
     def _ensure_output_dir(self, research_id: str = "") -> Path:
-        """Ensure the output directory exists and return the path."""
-        # Use same structure as PDF/DOCX: outputs/images/{research_id}/
+        """确保输出目录存在并返回路径。"""
+        # 使用与 PDF/DOCX 相同的结构：outputs/images/{research_id}/
         if research_id:
             output_path = self.output_dir / "images" / research_id
         else:
@@ -99,46 +99,46 @@ class ImageGeneratorProvider:
         return output_path
     
     def _generate_image_filename(self, prompt: str, index: int = 0) -> str:
-        """Generate a unique filename for the image based on prompt hash."""
+        """基于提示词哈希为图片生成唯一文件名。"""
         prompt_hash = hashlib.md5(prompt.encode()).hexdigest()[:8]
         return f"img_{prompt_hash}_{index}.png"
     
     def _crop_to_landscape(self, image_bytes: bytes, target_ratio: float = 16/9) -> bytes:
-        """Crop a square image to landscape format (16:9 by default).
+        """将方形图片裁剪为横版格式（默认 16:9）。
         
-        This ensures images fit well in article/report layouts.
+        这确保图片能很好地适配文章/报告版式。
         
-        Args:
-            image_bytes: Raw image bytes.
-            target_ratio: Target width/height ratio (default 16:9 ≈ 1.78).
+        参数：
+            image_bytes: 原始图片字节。
+            target_ratio: 目标宽高比（默认 16:9 ≈ 1.78）。
             
-        Returns:
-            Cropped image bytes in PNG format.
+        返回：
+            PNG 格式的裁剪后图片字节。
         """
         try:
             from PIL import Image
             import io
             
-            # Open the image
+            # 打开图片
             img = Image.open(io.BytesIO(image_bytes))
             width, height = img.size
             
-            # If already landscape or wider, return as-is
+            # 如果已是横版或更宽，原样返回
             if width / height >= target_ratio:
                 return image_bytes
             
-            # Calculate new dimensions for landscape crop
-            # Keep full width, reduce height
+            # 计算横版裁剪的新尺寸
+            # 保持完整宽度，减小高度
             new_height = int(width / target_ratio)
             
-            # Center crop vertically
+            # 垂直居中裁剪
             top = (height - new_height) // 2
             bottom = top + new_height
             
-            # Crop the image
+            # 裁剪图片
             cropped = img.crop((0, top, width, bottom))
             
-            # Save to bytes
+            # 保存为字节
             output = io.BytesIO()
             cropped.save(output, format='PNG', optimize=True)
             output.seek(0)
@@ -154,17 +154,17 @@ class ImageGeneratorProvider:
             return image_bytes
     
     def _build_enhanced_prompt(self, prompt: str, context: str = "", style: str = "dark") -> str:
-        """Build an enhanced prompt with explicit styling instructions.
+        """构建带明确样式指令的增强提示词。
         
-        Args:
-            prompt: Base image prompt.
-            context: Additional context from research.
-            style: Image style - "dark" (matches app theme), "light", or "auto".
+        参数：
+            prompt: 基础图片提示词。
+            context: 来自研究的额外上下文。
+            style: 图片风格 - "dark"（匹配应用主题）、"light" 或 "auto"。
             
-        Returns:
-            Enhanced prompt string with styling instructions.
+        返回：
+            带样式指令的增强提示词字符串。
         """
-        # Style-specific color palettes
+        # 特定风格的调色板
         if style == "dark":
             # Dark mode matching the GPT Researcher app theme
             style_instructions = """
@@ -231,18 +231,18 @@ AVOID:
         num_images: int = 1,
         style: str = "dark",
     ) -> List[Dict[str, Any]]:
-        """Generate images based on a prompt and optional context.
+        """基于提示词和可选上下文生成图片。
         
-        Args:
-            prompt: The image generation prompt.
-            context: Additional context to improve image relevance.
-            research_id: Research ID for organizing output.
-            aspect_ratio: Aspect ratio for the image (Imagen only).
-            num_images: Number of images to generate.
-            style: Image style - "dark", "light", or "auto".
+        参数：
+            prompt: 图片生成提示词。
+            context: 用于提高图片相关性的额外上下文。
+            research_id: 用于组织输出的研究 ID。
+            aspect_ratio: 图片的宽高比（仅 Imagen）。
+            num_images: 要生成的图片数量。
+            style: 图片风格 - "dark"、"light" 或 "auto"。
             
-        Returns:
-            List of dictionaries containing image info with absolute paths.
+        返回：
+            包含图片信息（含绝对路径）的字典列表。
         """
         if not self.api_key:
             logger.warning("No API key configured for image generation")
@@ -251,7 +251,7 @@ AVOID:
         self._ensure_client()
         output_path = self._ensure_output_dir(research_id)
         
-        # Build enhanced prompt with styling
+        # 构建带样式的增强提示词
         logger.info(f"Building image prompt with style: {style}")
         full_prompt = self._build_enhanced_prompt(prompt, context, style)
         logger.debug(f"Full prompt (first 500 chars): {full_prompt[:500]}")
@@ -273,19 +273,19 @@ AVOID:
         research_id: str,
         original_prompt: str,
     ) -> List[Dict[str, Any]]:
-        """Generate images using Gemini models via generate_content."""
+        """使用 Gemini 模型通过 generate_content 生成图片。"""
         generated_images = []
         
         for i in range(num_images):
             try:
-                # Gemini image models use generate_content
+                # Gemini 图片模型使用 generate_content
                 response = await asyncio.to_thread(
                     self._client.models.generate_content,
                     model=self.model_name,
                     contents=full_prompt,
                 )
                 
-                # Debug: Log response structure
+                # 调试：记录响应结构
                 if response.candidates:
                     candidate = response.candidates[0]
                     if candidate.content and candidate.content.parts:
@@ -295,48 +295,48 @@ AVOID:
                             has_text = hasattr(part, 'text') and part.text
                             logger.debug(f"Part {idx}: inline_data={has_inline}, text={has_text}")
                 
-                # Extract image from response parts
+                # 从响应部分提取图片
                 if response.candidates and response.candidates[0].content.parts:
                     for part in response.candidates[0].content.parts:
                         if hasattr(part, 'inline_data') and part.inline_data:
-                            # Found image data
+                            # 找到图片数据
                             image_data = part.inline_data.data
                             mime_type = getattr(part.inline_data, 'mime_type', 'image/png')
                             
-                            # Determine file extension
+                            # 确定文件扩展名
                             ext = 'png' if 'png' in mime_type else 'jpg'
                             filename = self._generate_image_filename(original_prompt, i)
                             filepath = output_path / filename
                             
-                            # Write image data (may be base64 encoded)
+                            # 写入图片数据（可能是 base64 编码）
                             if isinstance(image_data, str):
                                 image_bytes = base64.b64decode(image_data)
                             else:
                                 image_bytes = image_data
                             
-                            # Note: Keeping original square format from Gemini
-                            # To enable landscape cropping, uncomment:
+                            # 注意：保留 Gemini 的原始方形格式
+                            # 要启用横版裁剪，取消注释：
                             # image_bytes = self._crop_to_landscape(image_bytes)
                             
                             with open(filepath, 'wb') as f:
                                 f.write(image_bytes)
                             
-                            # Use both absolute path (for PDF) and web URL (for frontend)
+                            # 同时使用绝对路径（供 PDF）和 Web URL（供前端）
                             absolute_path = filepath.resolve()
                             web_url = f"/outputs/images/{research_id}/{filename}" if research_id else f"/outputs/images/{filename}"
                             
                             generated_images.append({
-                                "path": str(absolute_path),  # Absolute path for PDF generation
-                                "url": web_url,  # Web URL for frontend display
-                                "absolute_url": str(absolute_path),  # For PDF compatibility
+                                "path": str(absolute_path),  # 供 PDF 生成的绝对路径
+                                "url": web_url,  # 供前端显示的 Web URL
+                                "absolute_url": str(absolute_path),  # 供 PDF 兼容
                                 "prompt": original_prompt,
                                 "alt_text": self._generate_alt_text(original_prompt),
                             })
                             
                             logger.info(f"Generated image saved to: {filepath}")
-                            break  # Only take first image per iteration
+                            break  # 每次迭代只取第一张图片
                     else:
-                        # No inline_data found - check if there's text (model refused)
+                        # 未找到 inline_data - 检查是否有文本（模型拒绝）
                         for part in response.candidates[0].content.parts:
                             if hasattr(part, 'text') and part.text:
                                 logger.warning(f"Model returned text instead of image: {part.text[:200]}")
@@ -356,7 +356,7 @@ AVOID:
         aspect_ratio: str,
         research_id: str,
     ) -> List[Dict[str, Any]]:
-        """Generate images using Imagen models via generate_images."""
+        """使用 Imagen 模型通过 generate_images 生成图片。"""
         from google.genai import types
         
         generated_images = []
@@ -377,7 +377,7 @@ AVOID:
                     filename = self._generate_image_filename(full_prompt, i)
                     filepath = output_path / filename
                     
-                    # Extract image bytes
+                    # 提取图片字节
                     if hasattr(gen_image, 'image') and hasattr(gen_image.image, 'image_bytes'):
                         image_bytes = gen_image.image.image_bytes
                     elif hasattr(gen_image, 'image_bytes'):
@@ -389,7 +389,7 @@ AVOID:
                     with open(filepath, 'wb') as f:
                         f.write(image_bytes)
                     
-                    # Use both absolute path (for PDF) and web URL (for frontend)
+                    # 同时使用绝对路径（供 PDF）和 Web URL（供前端）
                     absolute_path = filepath.resolve()
                     web_url = f"/outputs/images/{research_id}/{filename}" if research_id else f"/outputs/images/{filename}"
                     
@@ -409,16 +409,16 @@ AVOID:
         return generated_images
     
     def _generate_alt_text(self, prompt: str) -> str:
-        """Generate accessible alt text from the prompt."""
-        # Clean and truncate for alt text
+        """从提示词生成无障碍替代文本。"""
+        # 清理并截断以用于替代文本
         clean_prompt = prompt.replace('\n', ' ').strip()
-        # Extract just the core subject
+        # 仅提取核心主题
         if len(clean_prompt) > 120:
             clean_prompt = clean_prompt[:117] + "..."
         return f"Illustration: {clean_prompt}"
     
     def is_available(self) -> bool:
-        """Check if image generation is available."""
+        """检查图片生成是否可用。"""
         if not self.api_key:
             return False
         try:
@@ -430,7 +430,7 @@ AVOID:
     
     @classmethod
     def from_config(cls, config) -> Optional["ImageGeneratorProvider"]:
-        """Create an ImageGeneratorProvider from a Config object."""
+        """从 Config 对象创建 ImageGeneratorProvider。"""
         model = getattr(config, 'image_generation_model', None)
         enabled = getattr(config, 'image_generation_enabled', False)
         

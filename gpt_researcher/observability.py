@@ -1,8 +1,8 @@
-"""Optional, failure-isolated research lifecycle events.
+"""可选的、故障隔离的研究生命周期事件。
 
-The core researcher deliberately does not interpret or persist these events.
-Consumers can provide either a callable or an object exposing ``on_event``.
-Observer failures must never change research results.
+核心研究员刻意不解释也不持久化这些事件。消费者可以提供
+一个可调用对象，或一个暴露 ``on_event`` 方法的对象。
+观察者的失败绝不能改变研究结果。
 """
 
 import inspect
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class ResearchObserver(Protocol):
-    """Object-style observer accepted by :class:`GPTResearcher`."""
+    """:class:`GPTResearcher` 接受的对象式观察者。"""
 
     def on_event(self, event: str, **fields: Any) -> Any: ...
 
@@ -24,7 +24,7 @@ async def emit_research_event(
     event: str,
     **fields: Any,
 ) -> None:
-    """Notify an observer without allowing telemetry to affect research."""
+    """通知观察者，且不允许遥测影响研究。"""
     if observer is None:
         return
 
@@ -33,5 +33,5 @@ async def emit_research_event(
         result = handler(event, **fields)
         if inspect.isawaitable(result):
             await result
-    except Exception as exc:  # noqa: BLE001 - observers must never affect research
+    except Exception as exc:  # noqa: BLE001 - 观察者绝不能影响研究
         logger.debug("Research observer failed for %s: %s", event, type(exc).__name__)

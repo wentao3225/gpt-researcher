@@ -16,7 +16,7 @@ from .draft_review import (
 
 
 class EditorAgent:
-    """Agent responsible for editing and managing code."""
+    """负责编辑和管理代码的智能体。"""
 
     def __init__(self, websocket=None, stream_output=None, tone=None, headers=None):
         self.websocket = websocket
@@ -26,10 +26,10 @@ class EditorAgent:
 
     async def plan_research(self, research_state: Dict[str, any]) -> Dict[str, any]:
         """
-        Plan the research outline based on initial research and task parameters.
+        根据初始研究和任务参数规划研究大纲。
 
-        :param research_state: Dictionary containing research state information
-        :return: Dictionary with title, date, and planned sections
+        :param research_state: 包含研究状态信息的字典
+        :return: 含标题、日期和计划章节的字典
         """
         initial_research = research_state.get("initial_research")
         task = research_state.get("task")
@@ -56,10 +56,10 @@ class EditorAgent:
 
     async def run_parallel_research(self, research_state: Dict[str, any]) -> Dict[str, List[str]]:
         """
-        Execute parallel research tasks for each section.
+        为每个章节执行并行研究任务。
 
-        :param research_state: Dictionary containing research state information
-        :return: Dictionary with research results
+        :param research_state: 包含研究状态信息的字典
+        :return: 含研究结果的字典
         """
         agents = self._initialize_agents()
         workflow = self._create_workflow()
@@ -83,7 +83,7 @@ class EditorAgent:
 
     def _create_planning_prompt(self, initial_research: str, include_human_feedback: bool,
                                 human_feedback: Optional[str], max_sections: int) -> List[Dict[str, str]]:
-        """Create the prompt for research planning."""
+        """创建研究规划提示词。"""
         return [
             {
                 "role": "system",
@@ -100,7 +100,7 @@ class EditorAgent:
 
     def _format_planning_instructions(self, initial_research: str, include_human_feedback: bool,
                                       human_feedback: Optional[str], max_sections: int) -> str:
-        """Format the instructions for research planning."""
+        """格式化研究规划的指令。"""
         today = datetime.now().strftime('%d/%m/%Y')
         feedback_instruction = (
             f"Human feedback: {human_feedback}. You must plan the sections based on the human feedback."
@@ -121,7 +121,7 @@ class EditorAgent:
                    sections: ['section header 1', 'section header 2', 'section header 3' ...]}}'."""
 
     def _initialize_agents(self) -> Dict[str, any]:
-        """Initialize the research, reviewer, and reviser skills."""
+        """初始化研究、审阅和修订技能。"""
         return {
             "research": ResearchAgent(self.websocket, self.stream_output, self.tone, self.headers),
             "reviewer": ReviewerAgent(self.websocket, self.stream_output, self.headers),
@@ -129,7 +129,7 @@ class EditorAgent:
         }
 
     def _create_workflow(self) -> StateGraph:
-        """Create the workflow for the research process."""
+        """创建研究过程的工作流。"""
         agents = self._initialize_agents()
         workflow = StateGraph(DraftState)
 
@@ -149,11 +149,11 @@ class EditorAgent:
         return workflow
 
     def _route_draft_review(self, draft: Dict[str, any]) -> str:
-        """Route reviewer output; force-accept once the ceiling is passed.
+        """路由审阅者输出；超过上限后强制接受。
 
-        ``route_draft_review`` raises when max_draft_revisions is exceeded.
-        Its own docstring says the edge should force-accept gracefully rather
-        than hit LangGraph's recursion_limit, which is what this does.
+        ``route_draft_review`` 在超过 max_draft_revisions 时抛出异常。
+        其自身 docstring 说明边应优雅地强制接受，而不是
+        撞上 LangGraph 的 recursion_limit，这里就是这么做的。
         """
         task = draft.get("task") or {}
         max_draft_revisions = task.get(
@@ -164,7 +164,7 @@ class EditorAgent:
             return "accept"
 
     def _log_parallel_research(self, queries: List[str]) -> None:
-        """Log the start of parallel research tasks."""
+        """记录并行研究任务的开始。"""
         if self.websocket and self.stream_output:
             asyncio.create_task(self.stream_output(
                 "logs",
@@ -180,13 +180,13 @@ class EditorAgent:
 
     def _create_task_input(self, research_state: Dict[str, any], query: str, title: str,
                            sections: Optional[List[str]] = None) -> Dict[str, any]:
-        """Create the input for a single research task."""
+        """为单个研究任务创建输入。"""
         return {
             "task": research_state.get("task"),
             "topic": query,
             "title": title,
             "headers": self.headers,
-            # Sections are researched in parallel, so none can see what the others
-            # wrote. Naming them lets each writer leave their ground alone (#1495).
+            # 各章节并行研究，彼此看不到对方写了什么。
+            # 列出它们的名字让每个撰写者不侵入他人领域（#1495）。
             "sibling_sections": [s for s in (sections or []) if s != query],
         }

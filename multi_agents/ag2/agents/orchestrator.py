@@ -18,7 +18,7 @@ from multi_agents.agents.writer import WriterAgent
 
 
 class ChiefEditorAgent:
-    """AG2-orchestrated agent responsible for managing and coordinating tasks."""
+    """由 AG2 编排的、负责管理和协调任务的智能体。"""
 
     def __init__(self, task: dict, websocket=None, stream_output=None, tone=None, headers=None):
         self.task = task

@@ -1,5 +1,5 @@
 """
-Wrapper for langchain vector store
+langchain 向量库的封装
 """
 from typing import List, Dict
 
@@ -9,16 +9,16 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 class VectorStoreWrapper:
     """
-    A Wrapper for LangchainVectorStore to handle GPT-Researcher Document Type
+    LangchainVectorStore 的封装，用于处理 GPT-Researcher 文档类型
     """
     def __init__(self, vector_store : VectorStore):
         self.vector_store = vector_store
 
     def load(self, documents):
         """
-        Load the documents into vector_store
-        Translate to langchain doc type, split to chunks then load.
-        Empty chunk batches leave the vector store unchanged.
+        将文档加载到 vector_store
+        先转换为 langchain 文档类型，拆分为分块后加载。
+        空分块批次不会改变向量库。
         """
         langchain_documents = self._create_langchain_documents(documents)
         splitted_documents = self._split_documents(langchain_documents)
@@ -27,10 +27,10 @@ class VectorStoreWrapper:
         self.vector_store.add_documents(splitted_documents)
     
     def _create_langchain_documents(self, data: List[Dict[str, str]]) -> List[Document]:
-        """Convert GPT Researcher Document to Langchain Document.
+        """将 GPT Researcher 文档转换为 Langchain 文档。
 
-        Skip non-dict rows and entries without usable ``raw_content``. Missing
-        ``url`` still yields a document with empty source rather than KeyError.
+        跳过非字典行和没有可用 ``raw_content`` 的条目。缺失的
+        ``url`` 仍会生成 source 为空的文档，而不是抛出 KeyError。
         """
         docs: List[Document] = []
         if not data:
@@ -51,7 +51,7 @@ class VectorStoreWrapper:
 
     def _split_documents(self, documents: List[Document], chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Document]:
         """
-        Split documents into smaller chunks
+        将文档拆分为更小的分块
         """
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
@@ -60,6 +60,6 @@ class VectorStoreWrapper:
         return text_splitter.split_documents(documents)
 
     async def asimilarity_search(self, query, k, filter):
-        """Return query by vector store"""
+        """通过向量库返回查询结果"""
         results = await self.vector_store.asimilarity_search(query=query, k=k, filter=filter)
         return results

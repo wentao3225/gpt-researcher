@@ -1,6 +1,6 @@
-# Brave Search Retriever
+# Brave 搜索检索器
 
-# libraries
+# 库
 import logging
 import os
 
@@ -9,13 +9,12 @@ import requests
 
 class BraveSearch:
     """
-    Brave Search API Retriever
+    Brave Search API 检索器
     """
-
     def __init__(self, query, query_domains=None):
         """
-        Initializes the BraveSearch object
-        Args:
+        初始化 BraveSearch 对象
+        参数：
             query:
         """
         self.query = query
@@ -25,8 +24,8 @@ class BraveSearch:
 
     def get_api_key(self):
         """
-        Gets the Brave Search API key
-        Returns:
+        获取 Brave Search API 密钥
+        返回：
 
         """
         try:
@@ -39,12 +38,12 @@ class BraveSearch:
 
     def search(self, max_results=7) -> list[dict[str, str]]:
         """
-        Searches the query
-        Returns:
+        搜索查询
+        返回：
 
         """
         print("Searching with query {0}...".format(self.query))
-        """Useful for general internet search queries using the Brave Search API."""
+        """使用 Brave Search API 进行通用互联网搜索查询。"""
 
         url = "https://api.search.brave.com/res/v1/web/search"
         headers = {
@@ -52,7 +51,7 @@ class BraveSearch:
             "Accept": "application/json",
             "Accept-Encoding": "gzip",
         }
-        # TODO: Add support for query domains
+        # TODO: 添加对查询域名的支持
         params = {
             "q": self.query,
             "count": min(max_results, 20),
@@ -84,7 +83,7 @@ class BraveSearch:
 
         search_results = []
 
-        # Normalize the results to match the format of the other search APIs
+        # 将结果规范化以匹配其他搜索 API 的格式
         for result in results:
             if not isinstance(result, dict):
                 continue

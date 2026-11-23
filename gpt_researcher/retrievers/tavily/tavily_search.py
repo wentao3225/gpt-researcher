@@ -1,7 +1,6 @@
-"""Tavily API search retriever for GPT Researcher.
+"""GPT Researcher 的 Tavily API 搜索检索器。
 
-This module provides the TavilySearch class for performing web searches
-using the Tavily API.
+此模块提供使用 Tavily API 执行网络搜索的 TavilySearch 类。
 """
 
 import json
@@ -11,28 +10,28 @@ from typing import Literal, Optional, Sequence
 
 import requests
 
-# Google-style site:domain operators, which the Tavily API does not support.
+# Google 风格的 site:域名 操作符，Tavily API 不支持。
 _SITE_OPERATOR_PATTERN = re.compile(r"site:(\S+)", re.IGNORECASE)
 
 
 class TavilySearch:
     """
-    Tavily API Retriever
+    Tavily API 检索器
     """
 
-    # Tavily's search() never sets include_raw_content, so results are always
-    # links plus a snippet -- the page still has to be scraped.
+    # Tavily 的 search() 从不设置 include_raw_content，因此结果始终是
+    # 链接加摘要 —— 页面仍需抓取。
     requires_scraping = True
 
     def __init__(self, query, headers=None, topic="general", query_domains=None):
         """
-        Initializes the TavilySearch object.
+        初始化 TavilySearch 对象。
 
-        Args:
-            query (str): The search query string.
-            headers (dict, optional): Additional headers to include in the request. Defaults to None.
-            topic (str, optional): The topic for the search. Defaults to "general".
-            query_domains (list, optional): List of domains to include in the search. Defaults to None.
+        参数：
+            query (str): 搜索查询字符串。
+            headers (dict, 可选): 请求中包含的额外请求头。默认为 None。
+            topic (str, 可选): 搜索的主题。默认为 "general"。
+            query_domains (list, 可选): 要包含在搜索中的域名列表。默认为 None。
         """
         self.query = query
         self.headers = headers or {}
@@ -46,8 +45,8 @@ class TavilySearch:
 
     def get_api_key(self):
         """
-        Gets the Tavily API key
-        Returns:
+        获取 Tavily API 密钥
+        返回：
 
         """
         api_key = self.headers.get("tavily_api_key")
@@ -77,7 +76,7 @@ class TavilySearch:
         use_cache: bool = True,
     ) -> dict:
         """
-        Internal search method to send the request to the API.
+        向 API 发送请求的内部搜索方法。
         """
 
         data = {
@@ -102,29 +101,29 @@ class TavilySearch:
         if response.status_code == 200:
             return response.json()
         else:
-            # Raises a HTTPError if the HTTP request returned an unsuccessful status code
+            # 如果 HTTP 请求返回不成功的状态码则抛出 HTTPError
             response.raise_for_status()
 
     def search(self, max_results=10):
         """
-        Searches the query
-        Returns:
+        搜索查询
+        返回：
 
         """
         try:
-            # LLM-generated queries often use Google-style site: operators,
-            # which Tavily rejects (returning zero results). Translate them
-            # into Tavily's include_domains parameter instead.
+            # LLM 生成的查询常使用 Google 风格的 site: 操作符，
+            # Tavily 会拒绝（返回零结果）。改为将其转换成
+            # Tavily 的 include_domains 参数。
             query = self.query
             include_domains = self.query_domains
             site_domains = _SITE_OPERATOR_PATTERN.findall(query)
             if site_domains:
                 query = _SITE_OPERATOR_PATTERN.sub("", query).strip()
-                # Keep only the domain part (Tavily matches domains, not paths)
+                # 只保留域名部分（Tavily 匹配域名，不匹配路径）
                 site_domains = [d.strip(",").split("/")[0] for d in site_domains]
                 include_domains = list(dict.fromkeys(site_domains + (include_domains or [])))
 
-            # Search the query (Tavily rejects queries longer than 400 chars)
+            # 搜索查询（Tavily 拒绝超过 400 字符的查询）
             results = self._search(
                 query[:400],
                 search_depth="basic",
@@ -132,15 +131,15 @@ class TavilySearch:
                 topic=self.topic,
                 include_domains=include_domains,
             )
-            # API/proxy glitches can yield a list or scalar JSON body; only dict
-            # responses have a top-level "results" key we understand.
+            # API/代理故障可能产生列表或标量 JSON 体；只有字典响应
+            # 才有我们理解顶层 "results" 键。
             if not isinstance(results, dict):
                 raise Exception("No results found with Tavily API search.")
             sources = results.get("results", [])
             if not isinstance(sources, list) or not sources:
                 raise Exception("No results found with Tavily API search.")
-            # Return the results. Guard each source against missing/None
-            # fields so a single malformed hit does not drop the whole page.
+            # 返回结果。对每个来源做缺失/None 字段防护，
+            # 使单个畸形命中不会丢弃整个页面。
             search_response = []
             for obj in sources:
                 if not isinstance(obj, dict):

@@ -1,7 +1,7 @@
-"""Agent creation and selection utilities for GPT Researcher.
+"""GPT Researcher 的智能体创建与选择工具。
 
-This module provides functions to automatically select and configure
-the appropriate research agent based on the query type.
+此模块提供根据查询类型自动选择和配置
+合适研究智能体的函数。
 """
 
 import json
@@ -25,21 +25,21 @@ async def choose_agent(
     **kwargs
 ):
     """
-    Chooses the agent automatically
-    Args:
-        parent_query: In some cases the research is conducted on a subtopic from the main query.
-            The parent query allows the agent to know the main context for better reasoning.
-        query: original query
-        cfg: Config
-        cost_callback: callback for calculating llm costs
-        prompt_family: Family of prompts
+    自动选择智能体
+    参数：
+        parent_query: 某些情况下研究是针对主查询的某个子主题进行的。
+            父查询让智能体了解主上下文，以便更好地推理。
+        query: 原始查询
+        cfg: 配置
+        cost_callback: 用于计算 LLM 成本的回调
+        prompt_family: 提示词家族
 
-    Returns:
-        agent: Agent name
-        agent_role_prompt: Agent role prompt
+    返回：
+        agent: 智能体名称
+        agent_role_prompt: 智能体角色提示词
     """
     query = f"{parent_query} - {query}" if parent_query else f"{query}"
-    response = None  # Initialize response to ensure it's defined
+    response = None  # 初始化 response，确保变量已定义
 
     try:
         response = await create_chat_completion(
@@ -55,8 +55,8 @@ async def choose_agent(
             **kwargs
         )
 
-        # Prefer json_repair so fenced / lightly broken LLM JSON succeeds
-        # on the hot path instead of always falling through exception handling.
+        # 优先使用 json_repair，让带围栏/轻微损坏的 LLM JSON 在热路径上
+        # 直接成功，而不是总是落入异常处理。
         try:
             agent_dict = json_repair.loads(response) if response is not None else None
         except Exception:
@@ -72,17 +72,17 @@ async def choose_agent(
 
 
 async def handle_json_error(response: str | None):
-    """Handle JSON parsing errors from LLM responses.
+    """处理 LLM 响应中的 JSON 解析错误。
 
-    Attempts to recover agent information from malformed JSON responses
-    using json_repair and regex extraction as fallbacks.
+    使用 json_repair 和正则提取作为回退手段，
+    尝试从格式错误的 JSON 响应中恢复智能体信息。
 
-    Args:
-        response: The LLM response string that failed initial JSON parsing.
+    参数：
+        response: 初始 JSON 解析失败的 LLM 响应字符串。
 
-    Returns:
-        A tuple of (agent_name, agent_role_prompt). Returns default agent
-        if all parsing attempts fail.
+    返回：
+        (agent_name, agent_role_prompt) 元组。所有解析尝试都失败时
+        返回默认智能体。
     """
     try:
         agent_dict = json_repair.loads(response) if response is not None else None
@@ -120,7 +120,7 @@ async def handle_json_error(response: str | None):
 
 
 def _agent_pair_from_payload(payload):
-    """Return (server, agent_role_prompt) only for complete dict payloads."""
+    """仅对完整的字典载荷返回 (server, agent_role_prompt)。"""
     if not isinstance(payload, dict):
         return None
     server = payload.get("server")
@@ -131,23 +131,22 @@ def _agent_pair_from_payload(payload):
 
 
 def extract_json_with_regex(response: str | None) -> str | None:
-    """Extract JSON object from a string using regex.
+    """使用正则从字符串中提取 JSON 对象。
 
-    Attempts to find the first JSON object pattern in the response string.
+    尝试在响应字符串中找到第一个 JSON 对象模式。
 
-    Args:
-        response: The string to search for JSON content.
+    参数：
+        response: 要搜索 JSON 内容的字符串。
 
-    Returns:
-        The extracted JSON string if found, None otherwise.
+    返回：
+        找到时返回提取的 JSON 字符串，否则返回 None。
     """
     if not response:
         return None
-    # Greedy ``{.*}`` so the match spans from the first ``{`` to the LAST ``}``
-    # in the response, capturing the whole object. A non-greedy ``{.*?}``
-    # stopped at the first ``}``, truncating any object with more than one
-    # key or with a ``}`` inside a string value (e.g. an agent_role_prompt
-    # mentioning "{markets}") into invalid JSON.
+    # 贪婪的 ``{.*}`` 使匹配从第一个 ``{`` 跨到响应中最后一个 ``}``，
+    # 捕获整个对象。非贪婪的 ``{.*?}`` 会在第一个 ``}`` 处停止，把
+    # 含多个键或字符串值中带 ``}`` 的对象（如提到 "{markets}" 的
+    # agent_role_prompt）截断成无效 JSON。
     json_match = re.search(r"{.*}", response, re.DOTALL)
     if json_match:
         return json_match.group(0)

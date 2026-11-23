@@ -1,4 +1,4 @@
-"""GetXAPI X/Twitter retriever for GPT Researcher."""
+"""GPT Researcher 的 GetXAPI X/Twitter 检索器。"""
 
 import json
 import os
@@ -8,12 +8,12 @@ import urllib.request
 
 class GetXAPISearch:
     """
-    GetXAPI X/Twitter search retriever.
+    GetXAPI X/Twitter 搜索检索器。
 
-    Searches tweets via the GetXAPI REST API and returns results in the
-    standard {title, href, body} format used by all GPT Researcher retrievers.
+    通过 GetXAPI REST API 搜索推文，并以所有 GPT Researcher 检索器
+    使用的标准 {title, href, body} 格式返回结果。
 
-    Set GETXAPI_API_KEY in your environment. Get one at https://getxapi.com
+    在环境中设置 GETXAPI_API_KEY。可在 https://getxapi.com 获取密钥。
     """
 
     def __init__(self, query, query_domains=None, **kwargs):
@@ -33,10 +33,10 @@ class GetXAPISearch:
 
     def search(self, max_results=10):
         """
-        Search X/Twitter via GetXAPI advanced search.
+        通过 GetXAPI 高级搜索 X/Twitter。
 
-        Returns:
-            list: Search results as [{title, href, body}, ...]
+        返回：
+            list: 搜索结果 [{title, href, body}, ...]
         """
         print(f"Searching X/Twitter with query: {self.query}...")
 

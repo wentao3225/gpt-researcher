@@ -10,13 +10,13 @@ from fastapi.responses import JSONResponse, FileResponse
 from gpt_researcher.document.document import DocumentLoader
 from gpt_researcher import GPTResearcher
 from gpt_researcher.actions import stream_output
-# This module is imported under two different package names: as
-# `backend.server.server_utils` (main.py / the Procfile entrypoint) and as
-# `server.server_utils` (backend/server/app.py prepends backend/ to sys.path).
-# Only the first can resolve `backend.utils`, so fall back to the bare name.
+# 此模块以两个不同的包名导入：作为
+# `backend.server.server_utils`（main.py / Procfile 入口）和
+# `server.server_utils`（backend/server/app.py 把 backend/ 加到 sys.path）。
+# 只有前者能解析 `backend.utils`，因此回退到裸名称。
 try:
     from backend.utils import write_md_to_pdf, write_md_to_word, write_text_to_md
-except ImportError:  # pragma: no cover - legacy sys.path-shimmed import
+except ImportError:  # pragma: no cover - 旧的 sys.path shim 导入
     from utils import write_md_to_pdf, write_md_to_word, write_text_to_md
 from pathlib import Path
 from datetime import datetime
@@ -26,7 +26,7 @@ import hashlib
 
 from .multi_agent_runner import run_multi_agent_task
 
-# Import chat agent
+# 导入聊天智能体
 try:
     import sys
     backend_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,14 +39,14 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class CustomLogsHandler:
-    """Custom handler to capture streaming logs from the research process"""
+    """捕获研究过程流式日志的自定义处理器"""
     def __init__(self, websocket, task: str):
         self.logs = []
         self.websocket = websocket
         sanitized_filename = sanitize_filename(f"task_{int(time.time())}_{task}")
         self.log_file = os.path.join("outputs", f"{sanitized_filename}.json")
         self.timestamp = datetime.now().isoformat()
-        # Initialize log file with metadata
+        # 用元数据初始化日志文件
         os.makedirs("outputs", exist_ok=True)
         with open(self.log_file, 'w') as f:
             json.dump({
@@ -62,16 +62,16 @@ class CustomLogsHandler:
             }, f, indent=2)
 
     async def send_json(self, data: Dict[str, Any]) -> None:
-        """Store log data and send to websocket"""
-        # Send to websocket for real-time display
+        """存储日志数据并发送到 websocket"""
+        # 发送到 websocket 实时显示
         if self.websocket:
             await self.websocket.send_json(data)
             
-        # Read current log file
+        # 读取当前日志文件
         with open(self.log_file, 'r') as f:
             log_data = json.load(f)
             
-        # Update appropriate section based on data type
+        # 根据数据类型更新相应部分
         if data.get('type') == 'logs':
             log_data['events'].append({
                 "timestamp": datetime.now().isoformat(),
@@ -79,10 +79,10 @@ class CustomLogsHandler:
                 "data": data
             })
         else:
-            # Update content section for other types of data
+            # 为其他类型数据更新 content 部分
             log_data['content'].update(data)
             
-        # Save updated log file
+        # 保存更新后的日志文件
         with open(self.log_file, 'w') as f:
             json.dump(log_data, f, indent=2)
 
@@ -91,9 +91,9 @@ class Researcher:
     def __init__(self, query: str, report_type: str = "research_report"):
         self.query = query
         self.report_type = report_type
-        # Generate unique ID for this research task
+        # 为此研究任务生成唯一 ID
         self.research_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hash(query)}"
-        # Initialize logs handler with research ID
+        # 用研究 ID 初始化日志处理器
         self.logs_handler = CustomLogsHandler(None, self.research_id)
         self.researcher = GPTResearcher(
             query=query,
@@ -102,31 +102,31 @@ class Researcher:
         )
 
     async def research(self) -> dict:
-        """Conduct research and return paths to generated files"""
+        """执行研究并返回生成文件的路径"""
         await self.researcher.conduct_research()
         report = await self.researcher.write_report()
         
-        # Generate the files
+        # 生成文件
         sanitized_filename = sanitize_filename(f"task_{int(time.time())}_{self.query}")
         file_paths = await generate_report_files(report, sanitized_filename)
         
-        # Get the JSON log path that was created by CustomLogsHandler
+        # 获取由 CustomLogsHandler 创建的 JSON 日志路径
         json_relative_path = os.path.relpath(self.logs_handler.log_file)
         
         return {
             "output": {
-                **file_paths,  # Include PDF, DOCX, and MD paths
+                **file_paths,  # 包含 PDF、DOCX 和 MD 路径
                 "json": json_relative_path
             }
         }
 
 def sanitize_filename(filename: str) -> str:
-    # Split into components
+    # 拆分为组成部分
     prefix, timestamp, *task_parts = filename.split('_')
     task = '_'.join(task_parts)
     task_hash = hashlib.md5(task.encode('utf-8', errors='ignore')).hexdigest()[:10]
             
-    # Reassemble and clean the filename
+    # 重新组装并清理文件名
     sanitized = f"{prefix}_{timestamp}_{task_hash}"
     return re.sub(r"[^\w\s-]", "", sanitized).strip()
 
@@ -152,9 +152,9 @@ async def handle_start_command(websocket, data: str, manager):
         print("Error: Missing task or report_type")
         return
 
-    # Create logs handler with websocket and task
+    # 创建带 websocket 和 task 的日志处理器
     logs_handler = CustomLogsHandler(websocket, task)
-    # Initialize log content with query
+    # 用查询初始化日志内容
     await logs_handler.send_json({
         "query": task,
         "sources": [],
@@ -181,29 +181,29 @@ async def handle_start_command(websocket, data: str, manager):
     )
     report = str(report)
     file_paths = await generate_report_files(report, sanitized_filename)
-    # Add JSON log path to file_paths
+    # 将 JSON 日志路径加入 file_paths
     file_paths["json"] = os.path.relpath(logs_handler.log_file)
     await send_file_paths(websocket, file_paths)
 
 
 async def handle_human_feedback(data: str):
-    feedback_data = json.loads(data[14:])  # Remove "human_feedback" prefix
+    feedback_data = json.loads(data[14:])  # 移除 "human_feedback" 前缀
     print(f"Received human feedback: {feedback_data}")
-    # TODO: Add logic to forward the feedback to the appropriate agent or update the research state
+    # TODO: 添加把反馈转发给合适智能体或更新研究状态的逻辑
 
 
 async def handle_chat_command(websocket, data: str):
-    """Handle chat command from WebSocket."""
+    """处理来自 WebSocket 的聊天命令。"""
     try:
-        # Parse chat data - format is "chat {json_data}"
-        json_str = data[5:].strip()  # Remove "chat " prefix
+        # 解析聊天数据 - 格式是 "chat {json_data}"
+        json_str = data[5:].strip()  # 移除 "chat " 前缀
         chat_data = json.loads(json_str)
         
         message = chat_data.get("message", "")
         report = chat_data.get("report", "")
         messages = chat_data.get("messages", [])
         
-        # If only message is provided, convert to messages format
+        # 如果只提供了 message，转换为 messages 格式
         if message and not messages:
             messages = [{"role": "user", "content": message}]
         
@@ -215,7 +215,7 @@ async def handle_chat_command(websocket, data: str):
             })
             return
         
-        # Check if ChatAgentWithMemory is available
+        # 检查 ChatAgentWithMemory 是否可用
         if ChatAgentWithMemory is None:
             await websocket.send_json({
                 "type": "chat",
@@ -224,17 +224,17 @@ async def handle_chat_command(websocket, data: str):
             })
             return
         
-        # Create chat agent with the report context
+        # 用报告上下文创建聊天智能体
         chat_agent = ChatAgentWithMemory(
             report=report,
             config_path="default",
             headers=None
         )
         
-        # Process the chat
+        # 处理聊天
         response_content, tool_calls_metadata = await chat_agent.chat(messages, websocket)
         
-        # Send response back via WebSocket
+        # 通过 WebSocket 发回响应
         await websocket.send_json({
             "type": "chat",
             "content": response_content,
@@ -341,8 +341,8 @@ def is_human_feedback_message(data: str) -> bool:
 
 async def handle_websocket_communication(websocket, manager):
     running_task: asyncio.Task | None = None
-    # This loop is the socket's only reader, so plan feedback for the
-    # multi agent HumanAgent is handed over through this queue.
+    # 此循环是 socket 的唯一读取者，因此多智能体 HumanAgent 的
+    # 计划反馈通过此队列移交。
     websocket.state.human_feedback = asyncio.Queue()
 
     def run_long_running_task(awaitable: Awaitable) -> asyncio.Task:
@@ -375,7 +375,7 @@ async def handle_websocket_communication(websocket, manager):
                 elif running_task and not running_task.done() and is_human_feedback_message(data):
                     await websocket.state.human_feedback.put(data)
                 elif running_task and not running_task.done():
-                    # discard any new request if a task is already running
+                    # 如果已有任务在运行，丢弃任何新请求
                     logger.warning(
                         f"Received request while task is already running. Request data preview: {data[: min(20, len(data))]}..."
                     )
@@ -386,7 +386,7 @@ async def handle_websocket_communication(websocket, manager):
                             "output": "Task already running. Please wait.",
                         }
                     )
-                # Normalize command detection by checking startswith after stripping whitespace
+                # 去除空白后检查 startswith 来规范化命令检测
                 elif data.strip().startswith("start"):
                     logger.info(f"Processing start command")
                     running_task = run_long_running_task(
@@ -408,8 +408,8 @@ async def handle_websocket_communication(websocket, manager):
                         "output": "Unknown command received by server"
                     })
             except WebSocketDisconnect:
-                # A closed tab or a new research run closing the old socket is a
-                # normal disconnect, not an error. Let the endpoint clean it up.
+                # 关闭标签页或新研究运行关闭旧 socket 都是
+                # 正常断开，不是错误。交给端点清理。
                 raise
             except Exception as e:
                 logger.error(f"WebSocket error: {str(e)}\n{traceback.format_exc()}")

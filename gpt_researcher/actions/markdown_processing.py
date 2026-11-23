@@ -5,13 +5,13 @@ from typing import List, Dict
 
 def extract_headers(markdown_text: str) -> List[Dict]:
     """
-    Extract headers from markdown text.
+    从 Markdown 文本中提取标题。
 
-    Args:
-        markdown_text (str): The markdown text to process.
+    参数：
+        markdown_text (str): 要处理的 Markdown 文本。
 
-    Returns:
-        List[Dict]: A list of dictionaries representing the header structure.
+    返回：
+        List[Dict]: 表示标题结构的字典列表。
     """
     if not isinstance(markdown_text, str) or not markdown_text:
         return []
@@ -43,14 +43,14 @@ def extract_headers(markdown_text: str) -> List[Dict]:
 
 def extract_sections(markdown_text: str) -> List[Dict[str, str]]:
     """
-    Extract all written sections from subtopic report.
+    从子主题报告中提取所有已写的章节。
 
-    Args:
-        markdown_text (str): Subtopic report text.
+    参数：
+        markdown_text (str): 子主题报告文本。
 
-    Returns:
-        List[Dict[str, str]]: List of sections, each section is a dictionary containing
-        'section_title' and 'written_content'.
+    返回：
+        List[Dict[str, str]]: 章节列表，每个章节是包含
+        'section_title' 和 'written_content' 的字典。
     """
     if not isinstance(markdown_text, str) or not markdown_text:
         return []
@@ -61,8 +61,8 @@ def extract_sections(markdown_text: str) -> List[Dict[str, str]]:
     matches = re.findall(pattern, parsed_md, re.DOTALL)
     
     for title, content in matches:
-        # Decode after stripping tags so escaped code such as &lt;tag&gt;
-        # remains visible text rather than being mistaken for HTML markup.
+        # 在去除标签之后再解码，使 &lt;tag&gt; 这类转义代码
+        # 保持为可见文本，而不会被误认为 HTML 标记。
         clean_content = unescape(re.sub(r'<.*?>', '', content)).strip()
         if clean_content:
             sections.append({
@@ -74,13 +74,13 @@ def extract_sections(markdown_text: str) -> List[Dict[str, str]]:
 
 def table_of_contents(markdown_text: str) -> str:
     """
-    Generate a table of contents for the given markdown text.
+    为给定的 Markdown 文本生成目录。
 
-    Args:
-        markdown_text (str): The markdown text to process.
+    参数：
+        markdown_text (str): 要处理的 Markdown 文本。
 
-    Returns:
-        str: The generated table of contents.
+    返回：
+        str: 生成的目录。
     """
     if not isinstance(markdown_text, str):
         return ""
@@ -103,14 +103,14 @@ def table_of_contents(markdown_text: str) -> str:
 
 def add_references(report_markdown: str, visited_urls: set) -> str:
     """
-    Add references to the markdown report.
+    为 Markdown 报告添加参考文献。
 
-    Args:
-        report_markdown (str): The existing markdown report.
-        visited_urls (set): A set of URLs that have been visited during research.
+    参数：
+        report_markdown (str): 已有的 Markdown 报告。
+        visited_urls (set): 研究期间访问过的 URL 集合。
 
-    Returns:
-        str: The updated markdown report with added references.
+    返回：
+        str: 添加了参考文献的更新版 Markdown 报告。
     """
     if not isinstance(report_markdown, str):
         report_markdown = "" if report_markdown is None else str(report_markdown)
@@ -118,10 +118,9 @@ def add_references(report_markdown: str, visited_urls: set) -> str:
         return report_markdown
     try:
         url_markdown = "\n\n\n## References\n\n"
-        # Sort so the reference list is deterministic. ``visited_urls`` is a
-        # set, whose iteration order varies from run to run (and across
-        # processes), which made the final report's References section
-        # non-reproducible for the same inputs.
+        # 排序以保证参考文献列表是确定性的。``visited_urls`` 是集合，
+        # 其迭代顺序每次运行（乃至跨进程）都不同，这曾导致相同输入下
+        # 最终报告的 References 部分不可复现。
         url_markdown += "".join(f"- [{url}]({url})\n" for url in sorted(visited_urls))
         updated_markdown_report = report_markdown + url_markdown
         return updated_markdown_report

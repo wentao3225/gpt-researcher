@@ -1,26 +1,22 @@
-"""Report-quality benchmark: deep agent + GPT Researcher vs deep agent + raw search.
+"""报告质量基准：深度智能体 + GPT Researcher 对比 深度智能体 + 原始搜索。
 
-Short-form QA benchmarks (SimpleQA, FRAMES) measure point-fact lookup, which
-is not what a research-report system is for. This benchmark measures the
-actual deliverable: given the same research topics, both agents write a
-report, and the reports are compared in three ways:
+短问答基准（SimpleQA、FRAMES）衡量的是单点事实查询能力，而这不是研究报告系统
+的用途所在。本基准衡量的是真正的交付物：给定相同的研究主题，两个智能体各写
+一份报告，然后从三个角度进行比较：
 
-1. Hard metrics - unique cited URLs, unique cited domains, word count.
-2. Blind pairwise LLM judging (A/B order randomized per topic and dimension)
-   on the dimensions used by deep-research evaluations such as DeepResearch
-   Bench (https://arxiv.org/abs/2506.11763): comprehensiveness & depth,
-   source & citation quality, factual grounding, and overall usefulness.
-3. Per-dimension win rates aggregated across topics.
+1. 硬指标 —— 唯一引用 URL 数、唯一引用域名数、字数。
+2. 盲测成对 LLM 评判（A/B 顺序按主题和维度随机打乱），维度参照 DeepResearch
+   Bench（https://arxiv.org/abs/2506.11763）等深度研究评测的常用设置：全面性与
+   深度、来源与引用质量、事实依据、整体有用性。
+3. 各个维度的胜率，在所有主题上汇总。
 
-The two systems are identical (model, harness, base prompt) except for their
-research tooling:
+两个系统除研究工具外完全相同（模型、框架、基础提示词）：
 
-- baseline: the deepagents quickstart setup - a raw Tavily `internet_search`
-  tool.
-- gptr: this example's setup - GPT Researcher exposed as `quick_search` and
-  `deep_research` tools.
+- baseline：deepagents 快速上手配置 —— 一个原生的 Tavily `internet_search` 工具。
+- gptr：本示例的配置 —— 把 GPT Researcher 封装为 `quick_search` 和
+  `deep_research` 工具。
 
-Usage (from the repository root):
+用法（在仓库根目录执行）：
     python deep_agents/report_benchmark.py --num-topics 8 --concurrency 2
 """
 
@@ -47,8 +43,8 @@ from deep_agents.benchmark import build_baseline_agent, build_gptr_agent, messag
 
 RESULTS_DIR = Path(__file__).parent / "benchmark_results"
 
-# Diverse research topics: analytical questions that warrant a researched,
-# cited report rather than a one-line answer.
+# 多样化的研究主题：这类分析性问题值得写一份有研究、有引用的报告，
+# 而不是一句话就能回答。
 TOPICS = [
     "What are the leading approaches to carbon capture and storage, and how do they compare on cost and scalability?",
     "How has the global semiconductor supply chain changed since 2020, and what are the key dependencies and risks?",
@@ -68,6 +64,7 @@ REPORT_REQUEST = (
     "Topic: {topic}"
 )
 
+# 评判维度的具体问题（属于提示词内容，保留英文）
 JUDGE_DIMENSIONS = {
     "comprehensiveness": "Which report is more comprehensive and insightful - covers more of the important aspects of the topic, with more depth and specificity?",
     "citation_quality": "Which report grounds its claims better in cited sources - more claims backed by citations, higher-quality and more diverse sources?",
@@ -95,10 +92,12 @@ Reply with exactly one letter: "A" if Report A is better on this dimension, \
 "B" if Report B is better, or "T" if they are genuinely tied. Do not reply \
 with anything else."""
 
+# 匹配 Markdown 正文中出现的 http(s) 链接
 URL_PATTERN = re.compile(r"https?://[^\s\)\]\>\"']+")
 
 
 def hard_metrics(report: str) -> dict:
+    """统计可客观衡量的报告指标（引用 URL、域名、字数）"""
     urls = {u.rstrip(".,;") for u in URL_PATTERN.findall(report or "")}
     domains = {urlparse(u).netloc.removeprefix("www.") for u in urls if urlparse(u).netloc}
     return {
@@ -109,6 +108,7 @@ def hard_metrics(report: str) -> dict:
 
 
 async def write_report(agent, topic: str, recursion_limit: int = 60) -> dict:
+    """让智能体为给定主题生成报告，并记录耗时与硬指标"""
     start = time.perf_counter()
     result = await asyncio.wait_for(
         agent.ainvoke(
@@ -126,6 +126,7 @@ async def write_report(agent, topic: str, recursion_limit: int = 60) -> dict:
 
 
 def judge_pair(judge, topic: str, report_a: str, report_b: str, dimension_question: str) -> str:
+    """在单一维度上盲测比较两份报告，返回 A/B/T（平局）"""
     prompt = JUDGE_TEMPLATE.format(
         dimension_question=dimension_question,
         topic=topic,
@@ -137,8 +138,10 @@ def judge_pair(judge, topic: str, report_a: str, report_b: str, dimension_questi
 
 
 async def judge_topic(judge, topic: str, baseline_report: str, gptr_report: str, rng: random.Random) -> dict:
+    """在全部维度上评判同一主题的两份报告，返回各维度胜者"""
     verdicts = {}
     for dimension, question in JUDGE_DIMENSIONS.items():
+        # 随机决定 GPT Researcher 报告放在 A 还是 B，避免位置偏差
         gptr_is_a = rng.random() < 0.5
         report_a, report_b = (gptr_report, baseline_report) if gptr_is_a else (baseline_report, gptr_report)
         letter = await asyncio.to_thread(judge_pair, judge, topic, report_a, report_b, question)
@@ -168,6 +171,7 @@ async def main() -> None:
 
     print(f"Report benchmark: {len(topics)} topics, model {args.model}, judge {args.judge_model}\n")
 
+    # 用信号量限制并发任务数，避免触发限流
     semaphore = asyncio.Semaphore(args.concurrency)
 
     async def run_topic(index: int, topic: str) -> dict:
@@ -182,6 +186,7 @@ async def main() -> None:
 
     records = list(await asyncio.gather(*(run_topic(i, t) for i, t in enumerate(topics))))
 
+    # 汇总：各维度胜率和各系统硬指标均值
     summary = {"win_rates": {}, "hard_metrics_avg": {}}
     for dimension in JUDGE_DIMENSIONS:
         outcomes = [r["verdicts"][dimension] for r in records]
@@ -203,6 +208,7 @@ async def main() -> None:
     print("\n=== SUMMARY ===")
     print(json.dumps(summary, indent=2))
 
+    # 结果按时间戳和主题数写入 benchmark_results 目录
     RESULTS_DIR.mkdir(exist_ok=True)
     results_path = RESULTS_DIR / f"reports_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_n{len(topics)}.json"
     output = {

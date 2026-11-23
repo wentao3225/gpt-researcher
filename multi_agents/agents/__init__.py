@@ -8,7 +8,7 @@ from .human import HumanAgent
 from .fact_checker import FactCheckerAgent
 from .visualizer import VisualizerAgent
 
-# Below import should remain last since it imports all of the above
+# 以下导入应保持在最后，因为它导入了上面所有模块
 from .orchestrator import ChiefEditorAgent
 
 __all__ = [

@@ -60,7 +60,7 @@ NO_SUPPORT_TEMPERATURE_MODELS = [
     "o3-2025-04-16",
     "o4-mini",
     "o4-mini-2025-04-16",
-    # GPT-5 family: OpenAI enforces default temperature only
+    # GPT-5 系列：OpenAI 仅强制使用默认温度
     "gpt-5",
     "gpt-5-mini",
     "gpt-5-nano",
@@ -78,7 +78,7 @@ NO_SUPPORT_TEMPERATURE_MODELS = [
     "gpt-6-astra",
     "gpt-6.1-terra",
     "gpt-6.1-sol",
-    # Claude 4.x family: Anthropic deprecates temperature on these models
+    # Claude 4.x 系列：Anthropic 在这些模型上弃用了温度
     "claude-sonnet-4-5",
     "claude-sonnet-4-5-20250929",
     "claude-sonnet-4-6",
@@ -89,8 +89,8 @@ NO_SUPPORT_TEMPERATURE_MODELS = [
     "claude-haiku-4-5-20251001",
 ]
 
-# Claude Opus 4.7 and later, the Claude 5 family, Fable and Mythos reject temperature with a 400.
-# Matched as prefixes so new versions are covered.
+# Claude Opus 4.7 及之后版本、Claude 5 系列、Fable 和 Mythos 会以 400 拒绝温度参数。
+# 按前缀匹配，使新版本也被覆盖。
 NO_SUPPORT_TEMPERATURE_MODEL_PREFIXES = (
     "claude-opus-4-7",
     "claude-opus-4-8",
@@ -105,7 +105,7 @@ NO_SUPPORT_TEMPERATURE_MODEL_PREFIXES = (
 def supports_temperature(model: str) -> bool:
     if model in NO_SUPPORT_TEMPERATURE_MODELS:
         return False
-    # drop provider prefixes: "anthropic/claude-..." (OpenRouter) and "us.anthropic.claude-..." (Bedrock)
+    # 去掉提供者前缀："anthropic/claude-..."（OpenRouter）和 "us.anthropic.claude-..."（Bedrock）
     name = model.rsplit("/", 1)[-1].split("anthropic.", 1)[-1]
     return not name.startswith(NO_SUPPORT_TEMPERATURE_MODEL_PREFIXES)
 
@@ -139,9 +139,7 @@ class ReasoningEfforts(Enum):
 
 
 class ChatLogger:
-    """Helper utility to log all chat requests and their corresponding responses
-    plus the stack trace leading to the call.
-    """
+    """记录所有聊天请求及其对应响应、以及调用堆栈的辅助工具。"""
 
     def __init__(self, fname: str):
         self.fname = fname
@@ -207,12 +205,12 @@ class GenericLLMProvider:
             _check_pkg("langchain_openai")
             from langchain_openai import ChatOpenAI
 
-            # Support custom OpenAI-compatible APIs via OPENAI_BASE_URL
+            # 通过 OPENAI_BASE_URL 支持自定义 OpenAI 兼容 API
             if "openai_api_base" not in kwargs and os.environ.get("OPENAI_BASE_URL"):
                 kwargs["openai_api_base"] = os.environ["OPENAI_BASE_URL"]
 
-            # Report token usage on streamed responses too, so cost
-            # tracking can use real usage instead of tiktoken estimates.
+            # 在流式响应上也报告 token 用量，使成本跟踪能使用真实用量
+            # 而非 tiktoken 估算。
             kwargs.setdefault("stream_usage", True)
 
             llm = ChatOpenAI(**kwargs)
@@ -255,8 +253,8 @@ class GenericLLMProvider:
             _check_pkg("langchain_ollama")
             from langchain_ollama import ChatOllama
 
-            # Use OLLAMA_BASE_URL from env if not already supplied in kwargs;
-            # fall back to the Ollama default so OLLAMA_BASE_URL is optional.
+            # kwargs 未提供时使用环境变量 OLLAMA_BASE_URL；
+            # 回退到 Ollama 默认值，使 OLLAMA_BASE_URL 成为可选项。
             if "base_url" not in kwargs:
                 kwargs["base_url"] = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 
@@ -270,7 +268,7 @@ class GenericLLMProvider:
             _check_pkg("langchain_mistralai")
             from langchain_mistralai import ChatMistralAI
 
-            # Support custom Mistral-compatible APIs via MISTRAL_BASE_URL
+            # 通过 MISTRAL_BASE_URL 支持自定义 Mistral 兼容 API
             if "endpoint" not in kwargs and "base_url" not in kwargs and os.environ.get("MISTRAL_BASE_URL"):
                 kwargs["endpoint"] = os.environ["MISTRAL_BASE_URL"]
 
@@ -334,7 +332,7 @@ class GenericLLMProvider:
             _check_pkg("langchain_gigachat")
             from langchain_gigachat.chat_models import GigaChat
 
-            kwargs.pop("model", None) # Use env GIGACHAT_MODEL=GigaChat-Max
+            kwargs.pop("model", None) # 使用环境变量 GIGACHAT_MODEL=GigaChat-Max
             llm = GigaChat(**kwargs)
         elif provider == "openrouter":
             _check_pkg("langchain_openai")
@@ -412,7 +410,7 @@ class GenericLLMProvider:
             _check_pkg("langchain_openai")
             from langchain_openai import ChatOpenAI
 
-            # NEBIUS_BASE_URL overrides the default endpoint (self-hosted / regional)
+            # NEBIUS_BASE_URL 覆盖默认端点（自托管 / 区域部署）
             llm = ChatOpenAI(openai_api_base=os.getenv("NEBIUS_BASE_URL", 'https://api.tokenfactory.nebius.com/v1'),
                      openai_api_key=os.environ["NEBIUS_API_KEY"],
                      **kwargs
@@ -428,20 +426,20 @@ class GenericLLMProvider:
                 f"Unsupported {provider}.\n\nSupported model providers are: {supported}"
             )
         instance = cls(llm, chat_log, verbose=verbose, llm_timeout=llm_timeout)
-        # Adaptive thinking yields Anthropic content blocks; research consumes text.
+        # 自适应思考会产生 Anthropic 内容块；研究只消费文本。
         instance._text_only = provider == "minimax_anthropic"
         return instance
 
     async def _await_llm_response(self, awaitable, *, streaming: bool = False):
-        # Limit each wait for the provider, not time spent forwarding output to
-        # the client. A stream may keep producing chunks for longer than this.
+        # 限制的是对提供者的每次等待，而非向客户端转发输出的时间。
+        # 流式传输可能在此限制之后继续产出分块。
         deadline = asyncio.timeout(self.llm_timeout or None)
         try:
             async with deadline:
                 return await awaitable
         except TimeoutError as exc:
             if not deadline.expired():
-                # Keep timeout errors raised by the provider itself unchanged.
+                # 提供者自身抛出的超时错误保持原样。
                 raise
             waiting_for = "the next stream chunk" if streaming else "a response"
             raise TimeoutError(
@@ -454,7 +452,7 @@ class GenericLLMProvider:
     async def get_chat_response(self, messages, stream, websocket=None, **kwargs):
         self._reset_last_response_metadata()
         if not stream:
-            # Getting output from the model chain using ainvoke for asynchronous invoking
+            # 使用 ainvoke 从模型链异步获取输出
             output = await self._await_llm_response(self.llm.ainvoke(messages, **kwargs))
             self._capture_response_metadata(output)
 
@@ -473,8 +471,8 @@ class GenericLLMProvider:
         paragraph = ""
         response = ""
 
-        # Restart the timeout for every chunk, including metadata-only chunks,
-        # so long reports can continue as long as the provider is responding.
+        # 为每个分块（包括仅元数据的分块）重启超时，
+        # 只要提供者仍在响应，长报告就能继续。
         stream = self.llm.astream(messages, **kwargs)
         try:
             while True:
@@ -492,8 +490,8 @@ class GenericLLMProvider:
                     await self._send_output(paragraph, websocket)
                     paragraph = ""
         finally:
-            # Close the provider stream on a timeout, caller cancellation, or
-            # a failed client send as well as on normal exhaustion.
+            # 在超时、调用方取消或客户端发送失败时，
+            # 以及正常耗尽时，都关闭提供者流。
             close = getattr(stream, "aclose", None)
             if close is not None:
                 await close()
@@ -513,7 +511,7 @@ class GenericLLMProvider:
 def _check_pkg(pkg: str) -> None:
     if not importlib.util.find_spec(pkg):
         pkg_kebab = pkg.replace("_", "-")
-        # Import colorama and initialize it
+        # 导入 colorama 并初始化
         init(autoreset=True)
 
         try:
@@ -521,7 +519,7 @@ def _check_pkg(pkg: str) -> None:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "-U", pkg_kebab])
             print(f"{Fore.GREEN}Successfully installed {pkg_kebab}{Style.RESET_ALL}")
 
-            # Try importing again after install
+            # 安装后再次尝试导入
             importlib.import_module(pkg)
 
         except subprocess.CalledProcessError:

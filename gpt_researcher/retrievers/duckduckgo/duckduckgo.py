@@ -1,31 +1,27 @@
 from itertools import islice
 from ..utils import check_pkg
 
-# gpt_researcher.skills.researcher._search_relevant_source_urls() treats
-# any search result whose raw_content/body exceeds 100 characters as
-# already-fetched full text -- a heuristic meant for retrievers (e.g.
-# PubMed Central) that genuinely return full article text inline. ddgs
-# populates "body" with an ordinary search-result snippet, which routinely
-# exceeds 100 characters, so without this cap every result is wrongly
-# treated as already-fetched and the real page is never actually scraped
-# (get_source_urls() then returns [] and reports ship with zero verifiable
-# citations). Capped here, at the source, rather than patched in
-# _search_relevant_source_urls() itself, so any future upstream change to
-# that function's classification logic (bug fixes, new bookkeeping) is
-# inherited automatically. The truncated snippet is only ever used for
-# that classification decision and early-stage sub-query planning -- once
-# a URL takes the real scrape path, gpt-researcher fetches and uses the
-# actual page content, not this snippet.
+# gpt_researcher.skills.researcher._search_relevant_source_urls() 会把任何
+# raw_content/body 超过 100 字符的搜索结果当作已取回的全文 —— 这条
+# 启发式是为真正内联返回全文的检索器（如 PubMed Central）设计的。
+# ddgs 在 "body" 中放的是普通搜索结果摘要，通常超过 100 字符，
+# 因此不设上限时每个结果都会被错误地当作已取回，真正的页面
+# 永远不会被实际抓取（get_source_urls() 随后返回 []，报告带着零条
+# 可验证引用发布）。在源头这里设上限，而不是在
+# _search_relevant_source_urls() 本身打补丁，这样该函数分类逻辑的
+# 任何未来上游变更（bug 修复、新的记账方式）都会自动继承。
+# 截断后的摘要只用于那次分类决策和早期子查询规划 —— 一旦 URL
+# 走真正的抓取路径，gpt-researcher 会抓取并使用实际页面内容，
+# 而非这个摘要。
 _MAX_PREFETCHED_LEN = 100
 
 
 class Duckduckgo:
     """
-    Duckduckgo API Retriever
+    Duckduckgo API 检索器
     """
 
-    # ddgs returns a snippet in "body"; the real page text still has to be
-    # fetched.
+    # ddgs 在 "body" 中返回摘要；真正的页面文本仍需抓取。
     requires_scraping = True
     def __init__(self, query, query_domains=None):
         check_pkg('ddgs')
@@ -36,15 +32,15 @@ class Duckduckgo:
 
     def search(self, max_results=5):
         """
-        Performs the search and normalizes ddgs payloads to the shared
-        ``{href, body, title?}`` contract used by other retrievers.
+        执行搜索并将 ddgs 载荷规范化为其他检索器使用的共享
+        ``{href, body, title?}`` 契约。
 
-        ``ddgs`` historically returned dicts with ``href``/`body` keys; newer
-        releases emit ``link``/`url` and ``body`/`snippet`/`description``.
-        Downstream research steps expect ``href`` and would KeyError or skip
-        sources if the raw ddgs shape is returned unchanged.
+        ``ddgs`` 历史上返回带 ``href``/`body` 键的字典；较新版本输出
+        ``link``/`url` 和 ``body`/`snippet`/`description``。下游研究步骤
+        期望 ``href``，如果原样返回原始 ddgs 形状，会导致 KeyError
+        或跳过来源。
         """
-        # TODO: Add support for query domains
+        # TODO: 添加对查询域名的支持
         try:
             search_response = self.ddg.text(self.query, region='wt-wt', max_results=max_results)
         except Exception as e:
@@ -78,5 +74,5 @@ class Duckduckgo:
                 item["title"] = title
             normalized.append(item)
 
-        # Preserve caller-requested max_results even if the client ignored it.
+        # 即使客户端忽略了调用方要求的 max_results，也予以保留。
         return list(islice(normalized, max_results))

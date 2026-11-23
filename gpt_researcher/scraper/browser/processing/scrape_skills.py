@@ -3,13 +3,13 @@ from langchain_community.retrievers import ArxivRetriever
 
 
 def scrape_pdf_with_pymupdf(url) -> str:
-    """Scrape a pdf with pymupdf
+    """使用 pymupdf 抓取 PDF
 
-    Args:
-        url (str): The url of the pdf to scrape
+    参数：
+        url (str): 要抓取的 PDF 的 URL
 
-    Returns:
-        str: The text scraped from the pdf
+    返回：
+        str: 从 PDF 抓取的文本
     """
     loader = PyMuPDFLoader(url)
     doc = loader.load()
@@ -17,14 +17,14 @@ def scrape_pdf_with_pymupdf(url) -> str:
 
 
 def scrape_pdf_with_arxiv(query) -> str:
-    """Scrape a pdf with arxiv
-    default document length of 70000 about ~15 pages or None for no limit
+    """使用 arxiv 抓取 PDF
+    默认文档长度 70000 约合 15 页，None 表示无限制
 
-    Args:
-        query (str): The query to search for
+    参数：
+        query (str): 要搜索的查询
 
-    Returns:
-        str: The text scraped from the pdf
+    返回：
+        str: 从 PDF 抓取的文本
     """
     retriever = ArxivRetriever(load_max_docs=2, doc_content_chars_max=None)
     docs = retriever.get_relevant_documents(query=query)

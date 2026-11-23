@@ -1,18 +1,18 @@
 """
-Quality Evaluation Metrics
---------------------------
-All report quality metrics in one module, grouped by what they measure:
+质量评估指标
+------------
+所有报告质量指标都集中在本模块中，按衡量对象分组：
 
-Source Quality — is the input good?
-  source_diversity()      — domain variety via ratio + Shannon entropy        ($0)
-  source_authority()      — authority score; unknown domains use LLM if given  ($0 / LLM)
+来源质量 —— 输入是否优质？
+  source_diversity()      —— 通过比率 + 香农熵衡量域名多样性        （$0）
+  source_authority()      —— 权威性评分；未知域名在提供 LLM 时使用   （$0 / LLM）
 
-Writing Behavior — how was the report written?
-  citation_faithfulness() — do cited-in-body sources match the References list ($0)
-  subtopic_coverage()     — how thoroughly the report covers expected subtopics (LLM)
+写作行为 —— 报告是如何撰写的？
+  citation_faithfulness() —— 正文中引用的来源是否与 References 列表一致（$0）
+  subtopic_coverage()     —— 报告对预期子主题的覆盖程度           （LLM）
 
-Hallucination — is the content supported?
-  unsupported_claim()     — claim-level credibility (supported/inferred/unsupported) (LLM)
+幻觉 —— 内容是否有依据？
+  unsupported_claim()     —— 断言级可信度（supported/inferred/unsupported）（LLM）
 """
 
 import asyncio
@@ -24,22 +24,22 @@ from urllib.parse import urlparse
 
 
 # ---------------------------------------------------------------------------
-# Shared helpers
+# 通用辅助函数
 # ---------------------------------------------------------------------------
 
 def _extract_domains(urls: list[str]) -> set[str]:
-    """Return normalised domain set from a list of URLs (strips www.)."""
+    """从 URL 列表返回归一化后的域名集合（去掉 www.）。"""
     return {urlparse(u).netloc.lower().removeprefix("www.") for u in urls if u}
 
 
 def _extract_domains_from_text(text: str) -> set[str]:
-    """Scan raw text for URLs and extract their domains."""
+    """扫描原始文本中的 URL 并提取其域名。"""
     urls = re.findall(r'https?://[^\s\)\]\,\"\'<>]+', text)
     return _extract_domains(urls)
 
 
 def _parse_json(text: str):
-    """Parse JSON from an LLM response, tolerating markdown code fences."""
+    """从 LLM 响应中解析 JSON，容忍 Markdown 代码围栏。"""
     text = text.strip()
     match = re.search(r'```(?:json)?\s*([\s\S]+?)\s*```', text)
     if match:
@@ -48,12 +48,11 @@ def _parse_json(text: str):
 
 
 def _split_at_references(report: str) -> tuple[str, str]:
-    """Split a report into (body, references_section).
+    """把报告切分为（正文, 参考文献部分）。
 
-    Both single- and multi-agent reports end with a `## References` (or
-    Sources/Citations/Bibliography) section listing every source. That list is
-    not evidence the body was written from those sources, so citation metrics
-    should look at the body only. Returns (body, refs); refs is "" if absent.
+    单智能体和多智能体报告都以 `## References`（或 Sources/Citations/Bibliography）
+    章节结尾，列出所有来源。该列表并不能证明正文是依据这些来源撰写的，因此
+    引用类指标只应考察正文。返回 (body, refs)；若不存在则 refs 为 ""。
     """
     m = re.search(r'(?im)^#+\s*(references|sources|citations|bibliography)\s*$', report)
     if m:
@@ -62,53 +61,49 @@ def _split_at_references(report: str) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# 1. Citation Faithfulness  (Writing Behavior)
+# 1. 引用忠实度（写作行为）
 # ---------------------------------------------------------------------------
 
 def citation_faithfulness(report: str, source_urls: list[str], context=None) -> dict:
     """
-    Alignment between the sources a report CLAIMS to use and the sources it
-    actually cites in the prose.
+    报告“声称”使用的来源与它正文中实际引用的来源之间的一致程度。
 
-        citation_faithfulness = |cited_in_body ∩ listed_in_refs| / |listed_in_refs|
+        citation_faithfulness = |正文中引用 ∩ 参考文献中列出| / |参考文献中列出|
 
-      1.0  = every source in the trailing `## References` list is actually
-             referenced somewhere in the body
-      low  = many sources are listed as references but never cited in the prose
-             (decorative / unused citations — a self-consistency failure)
-      None = the report has no References section to compare against
+      1.0  = 末尾 `## References` 列表中的每个来源都确实在正文某处被引用
+      低   = 许多来源被列在参考文献里却从未在正文中引用
+             （装饰性 / 未使用的引用 —— 属于自洽性失败）
+      None = 报告没有可供比较的 References 章节
 
-    This measures the LLM's citation discipline (does it use what it claims to
-    use?), NOT whether the content is correct — that is unsupported_claim's job.
+    本指标衡量 LLM 的引用纪律（是否用了它声称使用的内容），而非内容是否正确
+    —— 后者由 unsupported_claim 负责。
 
-    Also returns `citation_coverage` as a DESCRIPTIVE statistic (not a quality
-    score): of the sources actually used in research, how many are cited in the
-    body. A low coverage can simply mean the agent sensibly discarded sources,
-    so it should not be read as a quality signal on its own.
+    另外返回 `citation_coverage` 作为**描述性**统计量（不是质量分数）：
+    研究中实际用到的来源里，有多少在正文中被引用。覆盖率低可能只是说明智能体
+    合理地丢弃了一些来源，因此不应单独当作质量信号解读。
 
     Args:
-        report:      Full markdown report text.
-        source_urls: URLs from researcher.get_source_urls().
-        context:     Raw context from researcher.conduct_research() (str or list);
-                     when provided, coverage denominator = sources that made it
-                     into context (relevance-filtered).
+        report:      完整的 Markdown 报告文本。
+        source_urls: researcher.get_source_urls() 的 URL 列表。
+        context:     researcher.conduct_research() 的原始上下文（str 或 list）；
+                     提供时，覆盖率的分母 = 进入上下文（经相关性过滤）的来源。
     """
     source_domains = _extract_domains(source_urls)
 
     body, refs     = _split_at_references(report)
-    cited_domains  = _extract_domains_from_text(body)   # in-text citations only
-    listed_domains = _extract_domains_from_text(refs)   # end-of-report list only
+    cited_domains  = _extract_domains_from_text(body)   # 仅正文中的引用
+    listed_domains = _extract_domains_from_text(refs)   # 仅报告末尾的列表
 
-    # --- Faithfulness: of what is listed as references, how much is cited in body ---
+    # --- 忠实度：列在参考文献里的内容有多少在正文中被引用 ---
     if listed_domains:
         aligned      = cited_domains & listed_domains
         faithfulness = round(len(aligned) / len(listed_domains), 3)
         listed_only  = sorted(listed_domains - cited_domains)
     else:
-        faithfulness = None        # no references section → not applicable
+        faithfulness = None        # 没有参考文献章节 → 不适用
         listed_only  = []
 
-    # --- Coverage (descriptive only) ---
+    # --- 覆盖率（仅描述性） ---
     if context:
         context_text = context if isinstance(context, str) else json.dumps(context)
         used_domains = _extract_domains_from_text(context_text) & source_domains
@@ -121,23 +116,23 @@ def citation_faithfulness(report: str, source_urls: list[str], context=None) -> 
         "citation_faithfulness": faithfulness,
         "listed_ref_domains":    len(listed_domains),
         "cited_body_domains":    len(cited_domains),
-        "listed_only_domains":   listed_only,    # listed as ref but never cited in body
-        "citation_coverage":     coverage,       # descriptive, NOT a quality score
+        "listed_only_domains":   listed_only,    # 被列为参考文献但正文从未引用
+        "citation_coverage":     coverage,       # 描述性指标，不是质量分数
         "uncited_used_domains":  sorted(used_domains - cited_domains),
     }
 
 
 # ---------------------------------------------------------------------------
-# 2. Source Diversity
+# 2. 来源多样性
 # ---------------------------------------------------------------------------
 
 def source_diversity(source_urls: list[str]) -> dict:
     """
-    Domain variety measured by ratio and Shannon entropy.
+    用比率和香农熵衡量域名多样性。
 
-    diversity_ratio = unique domains / total sources  (0–1)
-    domain_entropy  = Shannon entropy over domain distribution
-                      (higher = more evenly spread, no single domain dominates)
+    diversity_ratio = 唯一域名数 / 总来源数  (0–1)
+    domain_entropy  = 域名分布上的香农熵
+                      （越高 = 分布越均匀，没有单一域名占据主导）
     """
     if not source_urls:
         return {
@@ -155,8 +150,8 @@ def source_diversity(source_urls: list[str]) -> dict:
 
     entropy = -sum((c / total) * math.log2(c / total) for c in counts.values())
 
-    # diversity_ratio = unique_domains / total_sources
-    # Shannon Entropy = -sum((c/total) * log2(c/total) for c in counts.values())
+    # diversity_ratio = 唯一域名数 / 总来源数
+    # 香农熵 = -sum((c/total) * log2(c/total) for c in counts.values())
     return {
         "total_sources":   total,
         "unique_domains":  unique,
@@ -167,9 +162,10 @@ def source_diversity(source_urls: list[str]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 3. Source Authority
+# 3. 来源权威性
 # ---------------------------------------------------------------------------
 
+# 高权威性域名（学术、政府、国际组织等）
 _HIGH_AUTHORITY_DOMAINS = {
     "nature.com", "science.org", "cell.com", "thelancet.com",
     "nejm.org", "pubmed.ncbi.nlm.nih.gov", "ncbi.nlm.nih.gov",
@@ -180,6 +176,7 @@ _HIGH_AUTHORITY_DOMAINS = {
     "britannica.com",
 }
 
+# 主流新闻媒体域名
 _MAJOR_NEWS_DOMAINS = {
     "bbc.com", "bbc.co.uk", "reuters.com", "apnews.com",
     "nytimes.com", "theguardian.com", "washingtonpost.com",
@@ -187,6 +184,7 @@ _MAJOR_NEWS_DOMAINS = {
     "npr.org", "pbs.org", "aljazeera.com",
 }
 
+# 供 LLM 评定域名权威性的提示词，属于提示词内容，保留英文
 _LLM_AUTHORITY_PROMPT = """
 You are a research source evaluator.
 
@@ -203,17 +201,17 @@ Return ONLY a JSON array in this exact format, one entry per domain:
 
 
 def _score_domain(domain: str):
-    """High-confidence rule match only.
+    """只做高置信度的规则匹配。
 
-    Returns (score, tier) for domains we can score reliably by rule
-    (.gov, .edu, known academic/news whitelists, wikipedia), or None to
-    signal the domain should be deferred to the LLM.
+    对可以靠规则可靠评分的域名返回 (score, tier)
+    （.gov、.edu、已知学术/新闻白名单、wikipedia），否则返回 None
+    以表示该域名应推迟交给 LLM 判断。
 
-    NOTE: .com / .org are intentionally NOT scored here. Many high-authority
-    sources live on .com/.org (e.g. sciencedirect.com, bmj.com, cureus.com),
-    so a blanket ".com → 0.5" rule misclassifies them as low-authority and,
-    critically, prevents them from ever reaching the LLM scorer. We defer all
-    such domains to the LLM instead (batched, so cost stays at ~1 call/query).
+    注意：这里故意不对 .com / .org 评分。许多高权威性来源都在
+    .com/.org 上（例如 sciencedirect.com、bmj.com、cureus.com），
+    一刀切的 “.com → 0.5” 规则会把它们误判为低权威，更关键的是
+    使它们永远无法进入 LLM 评分环节。这里把所有此类域名都推迟给
+    LLM 处理（批量调用，因此成本约为每次查询 1 次调用）。
     """
     d = domain.lower().removeprefix("www.")
     if d.endswith(".gov"):           return 1.0, "government"
@@ -221,11 +219,11 @@ def _score_domain(domain: str):
     if d in _HIGH_AUTHORITY_DOMAINS: return 0.9, "high-authority"
     if d in _MAJOR_NEWS_DOMAINS:     return 0.8, "major-news"
     if "wikipedia.org" in d:         return 0.75, "wikipedia"
-    return None   # defer .com / .org / everything else to the LLM
+    return None   # 把 .com / .org / 其他一切推迟给 LLM
 
 
 def _fallback_score(domain: str) -> tuple[float, str]:
-    """Rule-only score for deferred domains when no grader_model is available."""
+    """没有 grader_model 时，对推迟域名使用纯规则评分。"""
     d = domain.lower().removeprefix("www.")
     if d.endswith(".org"): return 0.65, "nonprofit-org"
     if d.endswith(".com"): return 0.5,  "commercial"
@@ -233,6 +231,7 @@ def _fallback_score(domain: str) -> tuple[float, str]:
 
 
 async def _llm_score_domains(domains: list[str], grader_model) -> list[dict]:
+    """用一次 LLM 调用批量评定域名权威性，失败时降级为 unknown。"""
     prompt = _LLM_AUTHORITY_PROMPT.format(
         domains="\n".join(f"- {d}" for d in domains)
     )
@@ -249,13 +248,13 @@ async def _llm_score_domains(domains: list[str], grader_model) -> list[dict]:
 
 async def source_authority(source_urls: list[str], grader_model=None) -> dict:
     """
-    Average authority score per source domain (0.0–1.0).
+    每个来源域名的平均权威性评分（0.0–1.0）。
 
-    High-confidence rule tiers: .gov=1.0, .edu=0.9, known academic/news=0.8-0.9,
-    wikipedia=0.75. Everything else (.com, .org, unknown TLDs) is deferred to a
-    single batched LLM call when grader_model is provided — this is what lets
-    sources like sciencedirect.com or bmj.com be recognised as high-authority.
-    Without a grader_model, deferred domains fall back to .org=0.65 / .com=0.5 / 0.4.
+    高置信度规则层级：.gov=1.0、.edu=0.9、已知学术/新闻=0.8-0.9、
+    wikipedia=0.75。其余全部（.com、.org、未知 TLD）在提供 grader_model 时
+    推迟到一次批量 LLM 调用中处理 —— 正因如此，像 sciencedirect.com 或
+    bmj.com 这样的来源才能被识别为高权威。
+    若没有 grader_model，推迟域名回退为 .org=0.65 / .com=0.5 / 0.4。
     """
     if not source_urls:
         return {"avg_authority_score": 0.0, "breakdown": []}
@@ -275,7 +274,7 @@ async def source_authority(source_urls: list[str], grader_model=None) -> dict:
     if deferred:
         score_map = {}
         if grader_model:
-            # Batch-score unique deferred domains in a single LLM call.
+            # 用一次 LLM 调用为去重后的推迟域名批量评分
             scored    = await _llm_score_domains(sorted(set(deferred)), grader_model)
             score_map = {s["domain"]: s for s in scored}
         for domain in deferred:
@@ -297,9 +296,10 @@ async def source_authority(source_urls: list[str], grader_model=None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 4. Subtopic Coverage
+# 4. 子主题覆盖度
 # ---------------------------------------------------------------------------
 
+# 下面两组提示词会发送给 LLM，属于提示词内容，保留英文
 _SUBTOPICS_PROMPT = """
 You are a research quality evaluator.
 
@@ -333,7 +333,7 @@ Return ONLY a JSON object: {{"covered": true}} or {{"covered": false}}.
 
 
 async def _check_one_subtopic(subtopic: str, report: str, grader_model) -> bool:
-    """Judge a single subtopic's coverage independently (no batch effects)."""
+    """独立判断单个子主题的覆盖情况（避免批量效应）。"""
     try:
         resp   = await grader_model.ainvoke(
             _COVERAGE_ONE_PROMPT.format(subtopic=subtopic, report=report[:12000]))
@@ -345,15 +345,14 @@ async def _check_one_subtopic(subtopic: str, report: str, grader_model) -> bool:
 
 async def subtopic_coverage(query: str, report: str, grader_model, subtopics=None) -> dict:
     """
-    LLM-judged coverage of expected subtopics (~2 calls, ~$0.02/query).
+    由 LLM 评判对预期子主题的覆盖情况（约 2 次调用，约 $0.02/查询）。
 
-    Step 1: generate expected subtopics for the query (adaptive count).
-    Step 2: check which subtopics the report covers.
+    第 1 步：为该查询生成预期子主题（数量自适应）。
+    第 2 步：检查报告覆盖了哪些子主题。
 
-    `subtopics`: optional pre-generated subtopic list. When provided, step 1 is
-    skipped and coverage is judged against these exact subtopics — this fixes the
-    subtopic set across calls (e.g. for perturbation testing, so coverage isn't
-    confounded by re-generation drift).
+    `subtopics`：可选的预生成子主题列表。提供时跳过第 1 步，并针对这组
+    确切的子主题评判覆盖度 —— 这能在多次调用之间固定子主题集合
+    （例如用于扰动测试，避免覆盖度被重新生成的漂移所混淆）。
     """
     if subtopics is None:
         try:
@@ -368,8 +367,8 @@ async def subtopic_coverage(query: str, report: str, grader_model, subtopics=Non
                 "error":                  "Failed to parse subtopics from LLM",
             }
 
-    # Judge each subtopic INDEPENDENTLY (one call each, concurrent) so a
-    # subtopic's verdict isn't swayed by the others in the same batch.
+    # 独立判断每个子主题（每个一次调用，并发执行），
+    # 以免某个子主题的结论被同一批中的其他子主题影响。
     flags   = await asyncio.gather(
         *(_check_one_subtopic(s, report, grader_model) for s in subtopics)
     )
@@ -386,9 +385,10 @@ async def subtopic_coverage(query: str, report: str, grader_model, subtopics=Non
 
 
 # ---------------------------------------------------------------------------
-# 5. Unsupported Claim Rate
+# 5. 无支撑断言率
 # ---------------------------------------------------------------------------
 
+# 下面两组提示词会发送给 LLM，属于提示词内容，保留英文
 _EXTRACT_CLAIMS_PROMPT = """
 You are a fact-checking assistant.
 
@@ -449,7 +449,7 @@ Return ONLY a JSON array, one object per claim:
 
 
 async def _verify_one_claim(claim: str, context_text: str, grader_model) -> dict:
-    """Score a single claim independently against the context (no batch effects)."""
+    """在给定上下文下独立评估单条断言（避免批量效应）。"""
     try:
         resp   = await grader_model.ainvoke(
             _VERIFY_CLAIMS_PROMPT.format(
@@ -470,19 +470,18 @@ async def _verify_one_claim(claim: str, context_text: str, grader_model) -> dict
 
 async def unsupported_claim(report: str, context, grader_model, claims=None) -> dict:
     """
-    Claim-level credibility scoring (~2 calls, ~$0.02/query).
+    断言级可信度评分（约 2 次调用，约 $0.02/查询）。
 
-    Step 1: extract 3-10 specific verifiable claims from the report.
-    Step 2: score each claim as supported (1.0), inferred (0.3-0.9), or unsupported (0.0).
+    第 1 步：从报告中抽取 3-10 条具体、可验证的断言。
+    第 2 步：把每条断言评为 supported (1.0)、inferred (0.3-0.9) 或 unsupported (0.0)。
 
-    Data claims (numbers/dates/stats) are strictly supported or unsupported — never inferred.
-    Returns avg_claim_score (overall credibility), unsupported_claim_rate (hard failures only),
-    inferred_claim_rate (synthesis proportion), and per-claim breakdown.
+    数据类断言（数字/日期/统计）只可能是 supported 或 unsupported，绝不可能是 inferred。
+    返回 avg_claim_score（整体可信度）、unsupported_claim_rate（仅硬性失败）、
+    inferred_claim_rate（推理占比）以及逐条断言的明细。
 
-    `claims`: optional pre-extracted claim list. When provided, the extraction
-    step is skipped and these exact claims are scored — this fixes the claim set
-    across calls (e.g. for perturbation testing, so scoring isn't confounded by
-    re-extraction drift).
+    `claims`：可选的预抽取断言列表。提供时跳过抽取步骤，直接为这组确切断言
+    评分 —— 这能在多次调用之间固定断言集合
+    （例如用于扰动测试，避免评分被重新抽取的漂移所混淆）。
     """
     context_text = context if isinstance(context, str) else json.dumps(context)
 
@@ -504,10 +503,9 @@ async def unsupported_claim(report: str, context, grader_model, claims=None) -> 
             "breakdown": [],
         }
 
-    # Score each claim INDEPENDENTLY (one LLM call per claim, run concurrently).
-    # Batch scoring let a corrupted/absurd claim shift the model's judgement of
-    # unrelated claims in the same batch — so a claim's score depended on its
-    # batch-mates. Independent scoring makes each claim's score self-contained.
+    # 独立评估每条断言（每条一次 LLM 调用，并发执行）。
+    # 若批量评分，一条被污染或荒谬的断言会带偏模型对同一批中无关断言的判断
+    # —— 于是某条断言的分数取决于它的同批伙伴。独立评分让每条断言的分数自洽。
     scored_claims = await asyncio.gather(
         *(_verify_one_claim(c, context_text, grader_model) for c in claims)
     )
@@ -540,11 +538,11 @@ async def unsupported_claim(report: str, context, grader_model, claims=None) -> 
 
 
 # ---------------------------------------------------------------------------
-# Orchestration  (shared by run_eval.py and benchmark.py)
+# 编排（由 run_eval.py 和 benchmark.py 共用）
 # ---------------------------------------------------------------------------
 
 def skipped(reason: str) -> dict:
-    """Sentinel returned when a metric can't run, so one failure doesn't abort."""
+    """指标无法运行时返回的哨兵值，避免一次失败导致整体中止。"""
     return {"status": "skipped", "reason": reason}
 
 
@@ -562,14 +560,14 @@ async def evaluate_report(
     run_subtopic: bool = True,
     run_unsupported: bool = True,
 ) -> dict:
-    """Backwards-compatible dict view over the standardized `suite.evaluate()`.
+    """在标准化的 `suite.evaluate()` 之上提供向后兼容的字典视图。
 
-    Returns `{metric_name: breakdown-dict | skipped-sentinel}`, plus `None` for
-    metrics gated off by the flags — the shape run_eval/benchmark already expect.
-    New code should prefer `suite.evaluate()`, which returns typed `MetricResult`
-    objects carrying group / score / concept-alignment metadata.
+    返回 `{metric_name: 明细字典 | skipped 哨兵}`，而由开关关闭的指标对应 `None`
+    —— 正是 run_eval/benchmark 已经期望的形态。
+    新代码应优先使用 `suite.evaluate()`，它返回带有 group / score /
+    概念对齐元数据的类型化 `MetricResult` 对象。
     """
-    # Local import breaks the metrics.py <-> suite.py import cycle.
+    # 延迟导入以打破 metrics.py 与 suite.py 之间的循环导入。
     from evals.quality_eval.suite import evaluate as _suite_evaluate, default_metrics
     from evals.quality_eval.base import EvalSample
 
@@ -578,6 +576,6 @@ async def evaluate_report(
         sample, default_metrics(run_subtopic, run_unsupported), grader_model)
 
     out = {r.name: (skipped(r.reason) if r.skipped else r.breakdown) for r in results}
-    out.setdefault("subtopic_coverage", None)     # None when gated off by flag
+    out.setdefault("subtopic_coverage", None)     # 被开关关闭时为 None
     out.setdefault("unsupported_claim", None)
     return out

@@ -1,17 +1,15 @@
-"""Relevance filtering of scraped content with TypeSafe's Jev model.
+"""使用 TypeSafe 的 Jev 模型对抓取内容做相关性过滤。
 
-The embeddings pipeline in ``compression.py`` keeps the chunks whose vectors
-are closest to the query. Cosine similarity measures topical closeness, not
-whether a passage helps answer the question, so on-topic filler ranks as
-high as the passage with the answer.
+``compression.py`` 中的嵌入管线保留向量与查询最接近的分块。
+余弦相似度衡量的是主题接近程度，而非某段文字是否有助于回答问题，
+因此切题的废话会与包含答案的段落得到同样高的排名。
 
-``JevContextCompressor`` asks the question directly instead: every chunk is
-scored by Jev on a four-level usefulness rubric, and the best-scoring chunks
-become the context. It keeps the embeddings pipeline's candidates (same
-splitter, same per-page cap) and output budget, so the two differ only in
-how chunks are chosen. No embedding model or vector math is involved.
+``JevContextCompressor`` 则直接提问：每个分块由 Jev 按四级有用性
+评分标准打分，得分最高的分块成为上下文。它保留嵌入管线的候选集
+（相同的拆分器、相同的每页上限）和输出预算，因此两者仅在分块
+挑选方式上不同。全程不涉及嵌入模型或向量运算。
 
-API: https://docs.typesafe.ai/api
+API：https://docs.typesafe.ai/api
 """
 
 import asyncio
@@ -31,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 TYPESAFE_BASE_URL = "https://api.typesafe.ai/v1"
 SYSTEMONE_PATH = "/systemone"
-#: USD per million input tokens; output tokens are free.
+#: 每百万输入 token 的美元价格；输出 token 免费。
 JEV_INPUT_PRICE_PER_MTOK = 0.042
 
 RELEVANCE_LEVELS = [
@@ -41,9 +39,9 @@ RELEVANCE_LEVELS = [
     "Directly answers the question with specific facts",
 ]
 
-# One shared limit per event loop: sub-queries run concurrently, and each
-# compressor would otherwise open its own full-width pool. Keyed by loop
-# because an asyncio.Semaphore is bound to the first loop that waits on it.
+# 每个事件循环一个共享限制：子查询并发运行，否则每个压缩器都会
+# 打开自己的全宽连接池。以循环为键，因为 asyncio.Semaphore
+# 绑定到第一个等待它的循环。
 _SEMAPHORES: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Semaphore]" = weakref.WeakKeyDictionary()
 
 
@@ -55,7 +53,7 @@ def _concurrency() -> asyncio.Semaphore:
 
 
 class JevError(RuntimeError):
-    """Jev could not score the chunks (missing key, API or network failure)."""
+    """Jev 无法为分块评分（缺少密钥、API 或网络故障）。"""
 
 
 @dataclass
@@ -66,7 +64,7 @@ class ScoredChunk:
 
 
 class JevClient:
-    """Minimal async client for the System One endpoint."""
+    """System One 端点的最小异步客户端。"""
 
     def __init__(self, api_key: str | None = None, model: str | None = None,
                  timeout: float = 30.0, max_retries: int = 3,
@@ -84,11 +82,11 @@ class JevClient:
         self.input_tokens = 0
 
     def session(self) -> httpx.AsyncClient:
-        """HTTP session shared by one batch of scoring calls."""
+        """由一批评分调用共享的 HTTP 会话。"""
         return httpx.AsyncClient()
 
     async def score_relevance(self, client: httpx.AsyncClient, query: str, passage: str) -> float:
-        """Probability-weighted usefulness of ``passage`` for ``query``, in [0, 3]."""
+        """``passage`` 对 ``query`` 的概率加权有用性，范围 [0, 3]。"""
         payload = {
             "state": passage,
             "model": self.model,
@@ -117,7 +115,7 @@ class JevClient:
                         self.input_tokens += body.get("usage", {}).get("input_tokens", 0)
                         return score
                     error = JevError(f"HTTP {response.status_code} from {self.api_url}: {response.text[:200]}")
-                    # Only overload and rate limiting are worth retrying.
+                    # 只有过载和限流值得重试。
                     if response.status_code not in (429, 529):
                         raise error
             if attempt < self.max_retries:
@@ -130,10 +128,10 @@ class JevClient:
 
 
 class JevContextCompressor:
-    """Selects the most useful chunks of scraped pages by asking Jev.
+    """通过询问 Jev 来挑选抓取页面中最有用的分块。
 
-    Same interface as ``ContextCompressor``: ``documents`` are scraper dicts
-    with ``raw_content``, ``url`` and ``title``.
+    与 ``ContextCompressor`` 相同的接口：``documents`` 是带有
+    ``raw_content``、``url`` 和 ``title`` 的抓取器字典。
     """
 
     def __init__(
@@ -161,7 +159,7 @@ class JevContextCompressor:
         return [chunk for chunk in splitter.split_documents(pages) if chunk.page_content.strip()]
 
     async def rank(self, query: str) -> list[ScoredChunk]:
-        """Every chunk with its Jev score, best first (ties keep page order)."""
+        """每个分块及其 Jev 分数，最优在前（平分时保持页面顺序）。"""
         chunks = self._chunks()
         async with self.client.session() as http:
             scores = await asyncio.gather(
@@ -171,7 +169,7 @@ class JevContextCompressor:
         return sorted(ranked, key=lambda c: (-c.score, c.position))
 
     async def async_get_context(self, query: str, max_results: int = 5, cost_callback=None) -> str:
-        # Same shortcut as ContextCompressor: little content needs no filtering.
+        # 与 ContextCompressor 相同的捷径：内容很少时无需过滤。
         total_chars = sum(len(str(doc.get("raw_content") or "")) for doc in self.documents)
         if total_chars < int(os.environ.get("COMPRESSION_THRESHOLD", "8000")) and len(self.documents) <= max_results:
             docs = [

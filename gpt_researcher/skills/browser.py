@@ -1,7 +1,7 @@
-"""Browser manager skill for GPT Researcher.
+"""GPT Researcher 的浏览器管理器技能。
 
-This module provides the BrowserManager class that handles web scraping
-and content extraction from URLs.
+此模块提供 BrowserManager 类，处理网页抓取
+和从 URL 提取内容。
 """
 
 from gpt_researcher.utils.workers import WorkerPool
@@ -12,21 +12,21 @@ from ..scraper.utils import get_image_hash
 
 
 class BrowserManager:
-    """Manages web browsing and content scraping for research.
+    """管理研究的网页浏览和内容抓取。
 
-    This class handles URL scraping, content extraction, and image
-    selection during the research process.
+    此类处理 URL 抓取、内容提取，以及研究过程
+    中的图片选择。
 
-    Attributes:
-        researcher: The parent GPTResearcher instance.
-        worker_pool: Pool of workers for parallel scraping.
+    属性：
+        researcher: 上级 GPTResearcher 实例。
+        worker_pool: 并行抓取的工作进程池。
     """
 
     def __init__(self, researcher):
-        """Initialize the BrowserManager.
+        """初始化 BrowserManager。
 
-        Args:
-            researcher: The GPTResearcher instance that owns this manager.
+        参数：
+            researcher: 拥有此管理器的 GPTResearcher 实例。
         """
         self.researcher = researcher
         self.worker_pool = WorkerPool(
@@ -36,13 +36,13 @@ class BrowserManager:
 
     async def browse_urls(self, urls: list[str]) -> list[dict]:
         """
-        Scrape content from a list of URLs.
+        从 URL 列表抓取内容。
 
-        Args:
-            urls (list[str]): list of URLs to scrape.
+        参数：
+            urls (list[str]): 要抓取的 URL 列表。
 
-        Returns:
-            list[dict]: list of scraped content results.
+        返回：
+            list[dict]: 抓取内容结果列表。
         """
         if self.researcher.verbose:
             await stream_output(
@@ -59,7 +59,7 @@ class BrowserManager:
             event_handler=getattr(self.researcher, "research_observer", None),
         )
         self.researcher.add_research_sources(scraped_content)
-        new_images = self.select_top_images(images, k=4)  # Select top 4 images
+        new_images = self.select_top_images(images, k=4)  # 选择前 4 张图片
         self.researcher.add_research_images(new_images)
 
         if self.researcher.verbose:
@@ -88,20 +88,20 @@ class BrowserManager:
 
     def select_top_images(self, images: list[dict], k: int = 2) -> list[str]:
         """
-        Select most relevant images and remove duplicates based on image content.
+        基于图片内容选择最相关的图片并去重。
 
-        Args:
-            images (list[dict]): list of image dictionaries with 'url' and 'score' keys.
-            k (int): Number of top images to select if no high-score images are found.
+        参数：
+            images (list[dict]): 带 'url' 和 'score' 键的图片字典列表。
+            k (int): 如果没有找到高分图片时选择的顶部图片数量。
 
-        Returns:
-            list[str]: list of selected image URLs.
+        返回：
+            list[str]: 选定图片 URL 列表。
         """
         unique_images = []
         seen_hashes = set()
         current_research_images = self.researcher.get_research_images()
 
-        # Process images in descending order of their scores
+        # 按分数降序处理图片
         for img in sorted(images, key=lambda im: im["score"], reverse=True):
             img_hash = get_image_hash(img['url'])
             if (

@@ -1,24 +1,22 @@
-"""Breadth x depth benchmark: scattered-evidence briefs at fixed agent budgets.
+"""广度 x 深度基准：固定智能体预算下零散证据的简报任务。
 
-The claim this measures: GPT Researcher gives a deep agent breadth AND depth
-in one run. Each `deep_research` call fans out into parallel sub-queries,
-scrapes dozens of pages, and returns one distilled, cited digest - so the
-main agent covers a wide brief in a handful of steps. A raw-search agent must
-instead pull every page through its own context window, one loop iteration at
-a time.
+它度量的命题：GPT Researcher 一次运行即给深度智能体带来广度和深度。
+每次 `deep_research` 调用扇形展开为并行子查询，抓取数十个页面，
+返回一份蒸馏的、带引用的摘要 —— 因此主智能体在少数几步内覆盖一份
+宽泛简报。而原始搜索智能体必须每次循环迭代把每个页面拉进自己的
+上下文窗口。
 
-To expose that difference, each task is a composite brief with 20+ verifiable
-checkpoints scattered across unrelated domains and dozens of pages - no
-single aggregator page covers even half of one task. Both agents run the
-same brief at fixed agent-step budgets (LangGraph recursion limits), and each
-report is graded per checkpoint (CORRECT/PARTIAL/MISSING/WRONG) against
-ground truth verified from official sources on 2026-07-04.
+为暴露这一差异，每个任务都是包含 20+ 个可验证检查点的复合简报，
+零散分布在互不相关的领域和数十个页面中 —— 没有任何单一聚合页面
+能覆盖哪怕一个任务的一半。两个智能体在固定智能体步数预算
+（LangGraph 递归限制）下跑相同的简报，每份报告按检查点
+对照 2026-07-04 从官方来源核验的真值评分
+（CORRECT/PARTIAL/MISSING/WRONG）。
 
-Headline metric: checkpoint coverage at each step budget - i.e. how much
-correct, current evidence each tooling extracts from the same orchestration
-budget.
+头条指标：每个步数预算下的检查点覆盖 —— 即相同编排预算下
+每种工具从相同简报中提取到的正确、最新证据量。
 
-Usage (from the repository root):
+用法（从仓库根目录）：
     python deep_agents/breadth_benchmark.py --budgets 25 60
 """
 
@@ -43,7 +41,7 @@ from deep_agents.recency_benchmark import grade_report
 
 RESULTS_DIR = Path(__file__).parent / "benchmark_results"
 
-# Ground truth verified from official sources on 2026-07-04.
+# 2026-07-04 从官方来源核验的真值。
 TASKS = [
     {
         "id": "h1_2026_almanac",
@@ -181,8 +179,8 @@ async def main() -> None:
             try:
                 outcome = await write_report(agents[system], task["prompt"], recursion_limit=budget)
             except Exception as e:
-                # Hitting the recursion limit without a final answer counts as
-                # an empty report - that IS the budget result.
+                # 达到递归限制而无最终答案算作空报告
+                # —— 那本身就是预算结果。
                 print(f"[{task['id']}] {system}@{budget} failed: {type(e).__name__}")
                 outcome = {"report": "", "latency_seconds": 0.0, "metrics": {}}
         grades = await asyncio.to_thread(grade_report, grader, task, outcome["report"])

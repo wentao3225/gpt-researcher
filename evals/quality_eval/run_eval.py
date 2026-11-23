@@ -1,17 +1,16 @@
 """
-Quality Evaluation Runner
---------------------------
-Runs GPT-Researcher on a set of queries and evaluates each report across
-six quality metrics:
+质量评估运行器
+--------------
+在一组查询上运行 GPT-Researcher，并用六项质量指标评估每份报告：
 
-  - Citation Ratio        : used sources cited in the report            ($0)
-  - Source Diversity      : domain variety (ratio + Shannon entropy)     ($0)
-  - Source Authority      : heuristic + optional LLM authority score     ($0 / ~$0.01/q)
-  - Subtopic Coverage     : LLM-judged coverage of expected subtopics (~$0.02/q)
-  - Hallucination         : binary faithfulness check vs sources       (~$0.01/q)
-  - Unsupported Claim Rate: fraction of claims lacking source support  (~$0.02/q)
+  - Citation Ratio（引用比率）：报告中被引用的已使用来源            （$0）
+  - Source Diversity（来源多样性）：域名多样性（比率 + 香农熵）     （$0）
+  - Source Authority（来源权威性）：启发式 + 可选 LLM 权威性评分     （$0 / ~$0.01/q）
+  - Subtopic Coverage（子主题覆盖）：由 LLM 评判的预期子主题覆盖度（~$0.02/q）
+  - Hallucination（幻觉）：对照来源的二元忠实度检查                （~$0.01/q）
+  - Unsupported Claim Rate（无支撑断言率）：缺乏来源支撑的断言占比  （~$0.02/q）
 
-Usage:
+用法：
     python -m evals.quality_eval.run_eval --num_examples 5
     python -m evals.quality_eval.run_eval --num_examples 10 --no-subtopic
     python -m evals.quality_eval.run_eval --num_examples 10 --no-hallucination
@@ -108,7 +107,7 @@ async def evaluate_single_query(
     subtopic    = m["subtopic_coverage"]
     unsupported = m["unsupported_claim"]
 
-    # --- LLM metric: hallucination (optional, requires `judges` library) ---
+    # --- LLM 指标：幻觉（可选，需要 `judges` 库） ---
     if run_hallucination:
         if not _HALLUCINATION_AVAILABLE:
             hallucination = _skipped("judges library not installed — run: pip install judges")
@@ -145,7 +144,7 @@ async def evaluate_single_query(
         "unsupported_claim": unsupported,
     }
 
-    # --- Console output ---
+    # --- 控制台输出 ---
     def _fmt_metric(label, value, fmt_fn):
         if _is_skipped(value):
             print(f"   {label:<24} SKIPPED ({value['reason']})")
@@ -224,19 +223,19 @@ async def main(num_examples: int, run_subtopic: bool, run_hallucination: bool, r
         print("No successful results.")
         return
 
-    # --- Aggregate ---
+    # --- 汇总 ---
     def avg(key_path):
         vals = []
         for r in successful:
             obj = r
             for k in key_path:
                 obj = obj.get(k) if isinstance(obj, dict) else None
-            # Skip None and skipped-sentinel values
+            # 跳过 None 和 skipped 哨兵值
             if obj is not None and not _is_skipped(obj):
                 vals.append(obj)
         return round(sum(vals) / len(vals), 3) if vals else None
 
-    # hallucination_rate: proportion of queries where hallucination was detected
+    # hallucination_rate：检测到幻觉的查询所占比例
     hallucinated = [
         r for r in successful
         if r.get("hallucination") and r["hallucination"].get("is_hallucination") is True
@@ -245,7 +244,7 @@ async def main(num_examples: int, run_subtopic: bool, run_hallucination: bool, r
         r for r in successful
         if r.get("hallucination") and r["hallucination"].get("is_hallucination") is not None
     ]
-    # TODO: hallucination detection itself might be wrong, need refinement
+    # TODO: 幻觉检测本身可能有问题，需要改进
     hallucination_rate = (
         round(len(hallucinated) / len(evaluated_for_hallucination), 3)
         if evaluated_for_hallucination else None
@@ -271,7 +270,7 @@ async def main(num_examples: int, run_subtopic: bool, run_hallucination: bool, r
     for k, v in aggregate.items():
         print(f"  {k}: {v}")
 
-    # --- Save log ---
+    # --- 保存日志 ---
     LOGS_DIR.mkdir(exist_ok=True)
     log = {
         "run_metadata": {

@@ -1,21 +1,20 @@
-"""Build the realistic internal-documents corpus for the hybrid benchmark.
+"""为混合基准构建真实内部文档语料库。
 
-Takes the four ground-truth documents in ``internal_docs_src/`` and produces
-``internal_docs/``, a corpus shaped like a real company document share:
+取 ``internal_docs_src/`` 中的四份事实文档，生成
+``internal_docs/``，一份形状像真实公司文档共享库的语料库：
 
-- The fact documents are converted to the formats such documents actually
-  ship in: PDF (board memo, ops report), DOCX (product brief) and markdown
-  (company overview).
-- Distractor documents (HR policies, IT runbooks, meeting notes, marketing
-  copy) are added across subdirectories, none of which contain checkpoint
-  facts.
-- Stale near-miss documents (2024/2025 ops reports and an outdated product
-  one-pager) contain earlier versions of the same metrics, so answering with
-  the wrong vintage of a fact is penalized by the grader.
+- 事实文档转换为这类文档实际交付的格式：
+  PDF（董事会备忘录、运营报告）、DOCX（产品简介）和
+  markdown（公司概览）。
+- 干扰文档（HR 政策、IT 操作手册、会议记录、营销文案）
+  分布在各子目录，均不含检查点事实。
+- 陈旧的近似文档（2024/2025 运营报告和过时的产品单页）
+  包含相同指标的较早版本，因此用错误年份的事实作答
+  会被评分器扣分。
 
-Deterministic: running it twice produces the same corpus.
+确定性：运行两次产生相同语料库。
 
-Usage: python deep_agents/benchmark_data/build_corpus.py
+用法：python deep_agents/benchmark_data/build_corpus.py
 """
 
 import shutil
@@ -59,8 +58,8 @@ def write_md(text: str, path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stale near-miss documents: earlier vintages of the fact documents. Their
-# numbers are deliberately different from the 2026 ground truth.
+# 陈旧的近似文档：事实文档的较早年份版本。它们的
+# 数字刻意与 2026 年的真值不同。
 # ---------------------------------------------------------------------------
 
 STALE_OPS_2024 = """# Q1 2024 Operations Report - Veltrix Dynamics
@@ -122,7 +121,7 @@ NOTE: early concept figures - superseded by the 2026 product brief.
 """
 
 # ---------------------------------------------------------------------------
-# Distractor documents: realistic internal noise, no checkpoint facts.
+# 干扰文档：真实的内部噪声，无检查点事实。
 # ---------------------------------------------------------------------------
 
 DISTRACTORS = {
@@ -348,18 +347,18 @@ def main() -> None:
 
     src = {p.name: p.read_text(encoding="utf-8") for p in SRC.glob("*.md")}
 
-    # Fact documents in realistic formats.
+    # 真实格式的事实文档。
     write_pdf(src["board_memo_2026_strategy.md"], OUT / "board" / "board_memo_2026_strategy.pdf")
     write_pdf(src["q1_2026_ops_report.md"], OUT / "ops" / "q1_2026_ops_report.pdf")
     write_docx(src["vlx500_product_brief.md"], OUT / "product" / "vlx500_product_brief.docx")
     write_md(src["company_overview.md"], OUT / "company_overview.md")
 
-    # Stale near-miss vintages.
+    # 陈旧的近似年份版本。
     write_pdf(STALE_OPS_2024, OUT / "ops" / "archive" / "q1_2024_ops_report.pdf")
     write_pdf(STALE_OPS_2025, OUT / "ops" / "archive" / "q1_2025_ops_report.pdf")
     write_md(STALE_PRODUCT_2025, OUT / "product" / "archive" / "vlx500_concept_2025_superseded.md")
 
-    # Distractors.
+    # 干扰项。
     for rel, text in DISTRACTORS.items():
         write_md(text, OUT / rel)
 

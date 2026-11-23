@@ -4,8 +4,8 @@ import xml.etree.ElementTree as ET
 import requests
 
 
-# JATS elements that start a block of their own. Text inside anything else, such as
-# <italic>, <sub> or <xref>, belongs to the word or sentence around it.
+# 自成一块的 JATS 元素。其他元素（如 <italic>、<sub> 或 <xref>）
+# 内部的文本属于其所在的单词或句子。
 _BLOCK_TAGS = {
     "p", "sec", "title", "label", "caption", "list-item", "fig", "table-wrap",
     "tr", "th", "td", "disp-formula", "disp-quote", "def-item", "term", "def",
@@ -13,16 +13,15 @@ _BLOCK_TAGS = {
 
 
 def _element_text(element: Optional[ET.Element]) -> str:
-    """The text of `element`, with one line per block and its inline markup kept in place.
+    """`element` 的文本，每个块一行，并保留其内联标记。
 
-    Joining `itertext()` with spaces split words at inline markup (`CO<sub>2</sub>` read
-    `CO 2`), and joining it with nothing would run paragraphs together.
+    用空格连接 `itertext()` 会在内联标记处拆分单词（`CO<sub>2</sub>`
+    读作 `CO 2`），而什么都不加又会把段落连在一起。
     """
     if element is None:
         return ""
     parts: List[str] = []
-    # Walked with a stack rather than recursion, so a deeply nested document cannot
-    # exhaust the interpreter's recursion limit
+    # 用栈而非递归遍历，使深层嵌套的文档不会耗尽解释器的递归限制
     stack: List[tuple] = [("start", element)]
     while stack:
         step, node = stack.pop()
@@ -45,11 +44,10 @@ def _element_text(element: Optional[ET.Element]) -> str:
 
 class PubMedCentralSearch:
     """
-    PubMed Central Full-Text Search
+    PubMed Central 全文搜索
     """
 
-    # PubMed Central returns full article text inline, so there is nothing
-    # left to scrape.
+    # PubMed Central 内联返回完整文章文本，因此无需再抓取。
     requires_scraping = False
 
     def __init__(self, query: str, query_domains=None):
@@ -57,20 +55,20 @@ class PubMedCentralSearch:
         self.base_fetch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
         self.base_link_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi"
         
-        # Get API key from environment
+        # 从环境获取 API 密钥
         self.api_key = os.getenv('NCBI_API_KEY')
         if not self.api_key:
             print("Warning: NCBI_API_KEY not set. Requests will be rate-limited.")
         
         self.query = query
-        self.db_type = os.getenv('PUBMED_DB', 'pmc')  # Default to PMC for full text
+        self.db_type = os.getenv('PUBMED_DB', 'pmc')  # 全文默认使用 PMC
         
-        # Optional parameters from environment
+        # 来自环境的可选参数
         self.params = self._populate_params()
 
     def _populate_params(self) -> Dict[str, Any]:
         """
-        Populates parameters from environment variables prefixed with 'PUBMED_ARG_'
+        从以 'PUBMED_ARG_' 为前缀的环境变量填充参数
         """
         params = {
             key[len('PUBMED_ARG_'):].lower(): value
@@ -78,19 +76,19 @@ class PubMedCentralSearch:
             if key.startswith('PUBMED_ARG_')
         }
         
-        # Set defaults if not provided
+        # 未提供时设置默认值
         params.setdefault('sort', 'relevance')
         params.setdefault('retmode', 'json')
         return params
 
     def _search_articles(self, max_results: int) -> Optional[List[str]]:
         """
-        Search for article IDs based on query
+        根据查询搜索文章 ID
         """
-        # Build search query with filters for full text
+        # 构建带全文过滤器的搜索查询
         if self.db_type == 'pubmed':
             search_term = f"{self.query} AND (ffrft[filter] OR pmc[filter])"
-        else:  # PMC always has full text
+        else:  # PMC 总是有全文
             search_term = self.query
         
         search_params = {
@@ -98,7 +96,7 @@ class PubMedCentralSearch:
             "term": search_term,
             "retmax": max_results,
             "api_key": self.api_key,
-            **self.params  # Include custom params
+            **self.params  # 包含自定义参数
         }
         
         try:
@@ -108,8 +106,8 @@ class PubMedCentralSearch:
             if not isinstance(data, dict):
                 return []
 
-            # Error / unexpected envelopes may set esearchresult to null,
-            # a list, or omit idlist. Only treat a real list as success.
+            # 错误/意外的信封可能把 esearchresult 设为 null、列表，
+            # 或省略 idlist。只有真正的列表才视为成功。
             esearch = data.get("esearchresult")
             if not isinstance(esearch, dict):
                 return []
@@ -124,7 +122,7 @@ class PubMedCentralSearch:
             return None
 
     def _pmid_to_pmcid(self, pmid: str) -> Optional[str]:
-        """Resolve a PubMed ID to the numerical PMC ID used by EFetch."""
+        """将 PubMed ID 解析为 EFetch 使用的数字 PMC ID。"""
         link_params = {
             "dbfrom": "pubmed",
             "db": "pmc",
@@ -151,7 +149,7 @@ class PubMedCentralSearch:
 
     def _fetch_full_text(self, article_id: str) -> Optional[Dict[str, str]]:
         """
-        Fetch full text content for a single article
+        获取单篇文章的全文内容
         """
         if self.db_type == "pubmed":
             article_id = self._pmid_to_pmcid(article_id)
@@ -159,7 +157,7 @@ class PubMedCentralSearch:
                 return None
 
         fetch_params = {
-            "db": "pmc",  # Always fetch from PMC for full text
+            "db": "pmc",  # 全文始终从 PMC 获取
             "id": article_id,
             "rettype": "full",
             "retmode": "xml",
@@ -170,7 +168,7 @@ class PubMedCentralSearch:
             response = requests.get(self.base_fetch_url, params=fetch_params, timeout=20)
             response.raise_for_status()
             
-            # Parse XML content
+            # 解析 XML 内容
             try:
                 root = ET.fromstring(response.text)
                 if root.tag == "ERROR" or root.find(".//ERROR") is not None:
@@ -179,19 +177,19 @@ class PubMedCentralSearch:
                 if article is None:
                     return None
 
-                # Error envelopes and metadata-only responses are not full text.
+                # 错误信封和仅元数据的响应不是全文。
                 body_text = _element_text(article.find('.//body'))
                 if not body_text:
                     return None
 
-                # Extract title and abstract, nested formatting tags included
+                # 提取标题和摘要，包括嵌套的格式化标签
                 title_text = _element_text(article.find('.//article-title'))
                 abstract_text = _element_text(article.find('.//abstract'))
                 
-                # Combine all text content
+                # 合并所有文本内容
                 full_content = f"Title: {title_text}\n\nAbstract: {abstract_text}\n\nBody: {body_text}"
                 
-                # Build URL
+                # 构建 URL
                 if self.db_type == "pmc" or article_id.startswith("PMC"):
                     url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{article_id}/"
                 else:
@@ -213,27 +211,27 @@ class PubMedCentralSearch:
 
     def search(self, max_results: int = 5) -> List[Dict[str, Any]]:
         """
-        Performs the search and retrieves full text content.
+        执行搜索并获取全文内容。
 
-        :param max_results: Maximum number of results to return
-        :return: JSON response in the format:
+        :param max_results: 返回结果的最大数量
+        :return: JSON 响应，格式如下：
             [
               {
                 "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1234567/",
-                "raw_content": "Full text content of the article..."
+                "raw_content": "文章的全文内容..."
               },
               ...
             ]
         """
-        # Step 1: Search for article IDs. Always return a list (never None):
-        # callers such as actions.query_processing.get_search_results are typed
-        # -> List[Dict] and skills.researcher does len(search_results), which
-        # raises TypeError on None.
+        # 步骤 1：搜索文章 ID。始终返回列表（绝不返回 None）：
+        # actions.query_processing.get_search_results 等调用方的类型是
+        # -> List[Dict]，而 skills.researcher 会执行 len(search_results)，
+        # 对 None 会抛出 TypeError。
         article_ids = self._search_articles(max_results)
         if not article_ids:
             return []
         
-        # Step 2: Fetch full text for each article
+        # 步骤 2：为每篇文章获取全文
         results = []
         for article_id in article_ids:
             article_content = self._fetch_full_text(article_id)

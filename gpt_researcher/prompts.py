@@ -9,45 +9,42 @@ from .utils.enum import PromptFamily as PromptFamilyEnum
 from typing import Callable, List, Dict, Any
 
 
-## Prompt Families #############################################################
+## 提示词家族 #############################################################
 
 class PromptFamily:
-    """General purpose class for prompt formatting.
+    """提示词格式化的通用类。
 
-    This may be overwritten with a derived class that is model specific. The
-    methods are broken down into two groups:
+    可以用一个针对特定模型的派生类覆盖它。方法分为两组：
 
-    1. Prompt Generators: These follow a standard format and are correlated with
-        the ReportType enum. They should be accessed via
-        get_prompt_by_report_type
+    1. 提示词生成器：遵循标准格式，与 ReportType 枚举对应。
+        应通过 get_prompt_by_report_type 访问
 
-    2. Prompt Methods: These are situation-specific methods that do not have a
-        standard signature and are accessed directly in the agent code.
+    2. 提示词方法：这些是针对特定情况的方法，没有标准签名，
+        在智能体代码中直接访问。
 
-    All derived classes must retain the same set of method names, but may
-    override individual methods.
+    所有派生类必须保留相同的一组方法名，但可以
+    覆盖个别方法。
     """
 
     def __init__(self, config: Config):
-        """Initialize with a config instance. This may be used by derived
-        classes to select the correct prompting based on configured models and/
-        or providers
+        """用 config 实例初始化。派生类可以使用它
+        根据配置的模型和/或提供者选择正确的提示方式
         """
         self.cfg = config
 
-    # MCP-specific prompts
+    # MCP 专用提示词
     @staticmethod
     def generate_mcp_tool_selection_prompt(query: str, tools_info: List[Dict], max_tools: int = 3) -> str:
         """
-        Generate prompt for LLM-based MCP tool selection.
+        为基于 LLM 的 MCP 工具选择生成提示词。
         
-        Args:
-            query: The research query
-            tools_info: List of available tools with their metadata
-            max_tools: Maximum number of tools to select
+        参数：
+            query: 研究查询
+            tools_info: 可用工具列表及其元数据
+            max_tools: 要选择的工具最大数量
             
-        Returns:
-            str: The tool selection prompt
+        返回：
+            str: 工具选择提示词
         """
         import json
         
@@ -94,7 +91,7 @@ Select exactly {max_tools} tools, ranked by relevance to the research query.
         Returns:
             str: The research execution prompt
         """
-        # Handle cases where selected_tools might be strings or objects with .name attribute
+        # 处理 selected_tools 可能是字符串或带 .name 属性的对象的情况
         tool_names = []
         for tool in selected_tools:
             if hasattr(tool, 'name'):
@@ -117,22 +114,22 @@ AVAILABLE TOOLS: {tool_names}
 
 Please conduct thorough research and provide your findings. Use the tools strategically to gather the most relevant and comprehensive information."""
 
-    # Image generation prompts
+    # 图片生成提示词
     @staticmethod
     def generate_image_analysis_prompt(
         query: str,
         sections: List[Dict[str, Any]],
         max_images: int = 3,
     ) -> str:
-        """Generate prompt for analyzing which report sections need images.
+        """生成提示词，用于分析报告的哪些章节需要图片。
         
-        Args:
-            query: The research query.
-            sections: List of report sections with header and content.
-            max_images: Maximum number of images to suggest.
+        参数：
+            query: 研究查询。
+            sections: 带标题和内容的报告章节列表。
+            max_images: 建议的图片最大数量。
             
-        Returns:
-            str: The analysis prompt.
+        返回：
+            str: 分析提示词。
         """
         sections_text = "\n\n".join([
             f"### Section {i+1}: {s['header']}\n{s['content'][:500]}..."
@@ -180,15 +177,15 @@ Return ONLY the JSON, no additional text."""
         section_content: str,
         research_topic: str,
     ) -> str:
-        """Enhance an image prompt with context for better generation.
+        """用上下文增强图片提示词以获得更好的生成效果。
         
-        Args:
-            base_prompt: The base image generation prompt.
-            section_content: Content from the report section.
-            research_topic: The main research topic.
+        参数：
+            base_prompt: 基础图片生成提示词。
+            section_content: 来自报告章节的内容。
+            research_topic: 主要研究主题。
             
-        Returns:
-            str: Enhanced image prompt.
+        返回：
+            str: 增强后的图片提示词。
         """
         return f"""Create a professional, informative illustration for a research report.
 
@@ -217,15 +214,15 @@ STYLE REQUIREMENTS:
         max_iterations: int = 3,
         context: List[Dict[str, Any]] = [],
     ):
-        """Generates the search queries prompt for the given question.
-        Args:
-            question (str): The question to generate the search queries prompt for
-            parent_query (str): The main question (only relevant for detailed reports)
-            report_type (str): The report type
-            max_iterations (int): The maximum number of search queries to generate
-            context (str): Context for better understanding of the task with realtime web information
+        """为给定问题生成搜索查询提示词。
+        参数：
+            question (str): 要为其生成搜索查询提示词的问题
+            parent_query (str): 主要问题（仅与详细报告相关）
+            report_type (str): 报告类型
+            max_iterations (int): 要生成的搜索查询最大数量
+            context (str): 上下文，结合实时网络信息更好地理解任务
 
-        Returns: str: The search queries prompt for the given question
+        返回：str: 给定问题的搜索查询提示词
         """
 
         if (
@@ -268,10 +265,10 @@ The response should contain ONLY the list.
         tone=None,
         language="english",
     ):
-        """Generates the report prompt for the given question and research summary.
-        Args: question (str): The question to generate the report prompt for
-                research_summary (str): The research summary to generate the report prompt for
-        Returns: str: The report prompt for the given question and research summary
+        """为给定问题和研究摘要生成报告提示词。
+        参数：question (str): 要为其生成报告提示词的问题
+                research_summary (str): 要为其生成报告提示词的研究摘要
+        返回：str: 给定问题和研究摘要的报告提示词
         """
 
         reference_prompt = ""
@@ -353,14 +350,14 @@ The response MUST not contain any markdown format or additional text (like ```js
     def generate_resource_report_prompt(
         question, context, report_source: str, report_format="apa", tone=None, total_words=1000, language="english"
     ):
-        """Generates the resource report prompt for the given question and research summary.
+        """为给定问题和研究摘要生成资源报告提示词。
 
-        Args:
-            question (str): The question to generate the resource report prompt for.
-            context (str): The research summary to generate the resource report prompt for.
+        参数：
+            question (str): 要为其生成资源报告提示词的问题。
+            context (str): 要为其生成资源报告提示词的研究摘要。
 
-        Returns:
-            str: The resource report prompt for the given question and research summary.
+        返回：
+            str: 给定问题和研究摘要的资源报告提示词。
         """
 
         reference_prompt = ""
@@ -399,7 +396,7 @@ The response MUST not contain any markdown format or additional text (like ```js
     def generate_outline_report_prompt(
         question, context, report_source: str, report_format="apa", tone=None,  total_words=1000, language: str = "english"
     ):
-        """Generates the outline report prompt for the given question and research summary.
+        """为给定问题和研究摘要生成大纲报告提示词。
         Args: question (str): The question to generate the outline report prompt for
                 research_summary (str): The research summary to generate the outline report prompt for
         Returns: str: The outline report prompt for the given question and research summary
@@ -424,7 +421,7 @@ The response MUST not contain any markdown format or additional text (like ```js
         total_words=2000,
         language: str = "english"
     ):
-        """Generates the deep research report prompt, specialized for handling hierarchical research results.
+        """生成深度研究报告提示词，专门用于处理层级式研究结果。
         Args:
             question (str): The research question
             context (str): The research context containing learnings with citations
@@ -516,7 +513,7 @@ response:
 
     @staticmethod
     def generate_summary_prompt(query, data):
-        """Generates the summary prompt for the given question and text.
+        """为给定问题和文本生成摘要提示词。
         Args: question (str): The question to generate the summary prompt for
                 text (str): The text to generate the summary prompt for
         Returns: str: The summary prompt for the given question and text
@@ -530,7 +527,7 @@ response:
 
     @staticmethod
     def generate_quick_summary_prompt(query: str, context: str) -> str:
-        """Generates the quick summary prompt for the given question and context.
+        """为给定问题和上下文生成快速摘要提示词。
         Args:
             query (str): The query to generate the summary for
             context (str): The search results to summarize
@@ -553,7 +550,7 @@ Instructions:
 
     @staticmethod
     def pretty_print_docs(docs: list[Document], top_n: int | None = None) -> str:
-        """Compress the list of documents into a context string"""
+        """将文档列表压缩为上下文字符串"""
         return f"\n".join(f"Source: {d.metadata.get('source')}\n"
                           f"Title: {d.metadata.get('title')}\n"
                           f"Content: {d.page_content}\n"
@@ -562,12 +559,12 @@ Instructions:
 
     @staticmethod
     def join_local_web_documents(docs_context: str, web_context: str) -> str:
-        """Joins local web documents with context scraped from the internet"""
+        """将本地 Web 文档与从互联网抓取的上下文拼接"""
         return f"Context from local documents: {docs_context}\n\nContext from web sources: {web_context}"
 
     ################################################################################################
 
-    # DETAILED REPORT PROMPTS
+    # 详细报告提示词
 
     @staticmethod
     def generate_subtopics_prompt() -> str:
@@ -719,15 +716,15 @@ Assume that the current date is {datetime.now(timezone.utc).strftime('%B %d, %Y'
     @staticmethod
     def generate_report_conclusion(query: str, report_content: str, language: str = "english", report_format: str = "apa") -> str:
         """
-        Generate a concise conclusion summarizing the main findings and implications of a research report.
+        生成简洁的结论，总结研究报告的主要发现及其含义。
 
-        Args:
-            query (str): The research task or question.
-            report_content (str): The content of the research report.
-            language (str): The language in which the conclusion should be written.
+        参数：
+            query (str): 研究任务或问题。
+            report_content (str): 研究报告的内容。
+            language (str): 结论应使用的语言。
 
-        Returns:
-            str: A concise conclusion summarizing the report's main findings and implications.
+        返回：
+            str: 总结报告主要发现及其含义的简洁结论。
         """
         prompt = f"""
     Based on the research report below and research task, please write a concise conclusion that summarizes the main findings and their implications:
@@ -754,16 +751,16 @@ Assume that the current date is {datetime.now(timezone.utc).strftime('%B %d, %Y'
 
 
 class GranitePromptFamily(PromptFamily):
-    """Prompts for IBM's granite models"""
+    """IBM granite 模型的提示词"""
 
 
     def _get_granite_class(self) -> type[PromptFamily]:
-        """Get the right granite prompt family based on the version number"""
+        """根据版本号获取正确的 granite 提示词家族"""
         if "3.3" in self.cfg.smart_llm:
             return Granite33PromptFamily
         if "3" in self.cfg.smart_llm:
             return Granite3PromptFamily
-        # If not a known version, return the default
+        # 未知版本则返回默认
         return PromptFamily
 
     def pretty_print_docs(self, *args, **kwargs) -> str:
@@ -774,7 +771,7 @@ class GranitePromptFamily(PromptFamily):
 
 
 class Granite3PromptFamily(PromptFamily):
-    """Prompts for IBM's granite 3.X models (before 3.3)"""
+    """IBM granite 3.X 模型（3.3 之前）的提示词"""
 
     _DOCUMENTS_PREFIX = "<|start_of_role|>documents<|end_of_role|>\n"
     _DOCUMENTS_SUFFIX = "\n<|end_of_text|>"
@@ -794,7 +791,7 @@ class Granite3PromptFamily(PromptFamily):
 
     @classmethod
     def join_local_web_documents(cls, docs_context: str | list, web_context: str | list) -> str:
-        """Joins local web documents using Granite's preferred format"""
+        """按 Granite 偏好的格式拼接本地 Web 文档"""
         if isinstance(docs_context, str) and docs_context.startswith(cls._DOCUMENTS_PREFIX):
             docs_context = docs_context[len(cls._DOCUMENTS_PREFIX):]
         if isinstance(web_context, str) and web_context.endswith(cls._DOCUMENTS_SUFFIX):
@@ -804,7 +801,7 @@ class Granite3PromptFamily(PromptFamily):
 
 
 class Granite33PromptFamily(PromptFamily):
-    """Prompts for IBM's granite 3.3 models"""
+    """IBM granite 3.3 模型的提示词"""
 
     _DOCUMENT_TEMPLATE = """<|start_of_role|>document {{"document_id": "{document_id}"}}<|end_of_role|>
 {document_content}<|end_of_text|>
@@ -830,12 +827,12 @@ class Granite33PromptFamily(PromptFamily):
 
     @classmethod
     def join_local_web_documents(cls, docs_context: str | list, web_context: str | list) -> str:
-        """Joins local web documents using Granite's preferred format"""
+        """按 Granite 偏好的格式拼接本地 Web 文档"""
         return "\n\n".join([docs_context, web_context])
 
-## Factory ######################################################################
+## 工厂 ######################################################################
 
-# This is the function signature for the various prompt generator functions
+# 各提示词生成器函数的函数签名
 PROMPT_GENERATOR = Callable[
     [
         str,        # question
@@ -889,7 +886,7 @@ prompt_family_mapping = {
 def get_prompt_family(
     prompt_family_name: PromptFamilyEnum | str, config: Config,
 ) -> PromptFamily:
-    """Get a prompt family by name or value."""
+    """按名称或值获取提示词家族。"""
     if isinstance(prompt_family_name, PromptFamilyEnum):
         prompt_family_name = prompt_family_name.value
     if prompt_family := prompt_family_mapping.get(prompt_family_name):

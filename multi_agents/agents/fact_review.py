@@ -2,7 +2,7 @@ DEFAULT_MAX_FACT_CHECK_REVISIONS = 3
 
 
 class MaxFactCheckRevisionsExceededError(RuntimeError):
-    """Raised when writer/fact-checker rounds exceed the configured limit."""
+    """当撰写者/事实核查器轮次超过配置的限制时抛出。"""
 
 
 def route_fact_check(state, max_fact_check_revisions=DEFAULT_MAX_FACT_CHECK_REVISIONS):

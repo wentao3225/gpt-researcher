@@ -14,6 +14,8 @@ if os.environ.get("LANGCHAIN_API_KEY"):
 
 from deep_agents.agent import build_agent
 
+# 任务配置固定从本目录的 task.json 读取
+
 
 def open_task():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,6 +33,7 @@ def open_task():
 
 
 def build_request(task: dict) -> str:
+    """把任务字典拼装成发送给智能体自然语言研究请求"""
     return (
         f"Research the following topic and produce a report: {task['query']}\n"
         f"The report should have at most {task.get('max_sections', 3)} sections."
@@ -38,6 +41,7 @@ def build_request(task: dict) -> str:
 
 
 def print_progress(update: dict):
+    """把流式更新的工具调用与文本消息打印为一行行进度信息"""
     for node, payload in update.items():
         if not isinstance(payload, dict):
             continue
@@ -62,9 +66,11 @@ def print_progress(update: dict):
 
 
 async def run_research_task(query, task=None):
+    """运行一次完整研究任务，返回落盘的 report.md 文本"""
     task = task or open_task()
     task["query"] = query
 
+    # 每次运行使用独立的输出目录，避免相互覆盖
     run_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "outputs", f"run_{uuid.uuid4().hex[:8]}"
     )
@@ -73,6 +79,7 @@ async def run_research_task(query, task=None):
 
     agent = build_agent(task, run_dir)
 
+    # stream_mode="updates" 表示只推送发生变化的节点
     async for update in agent.astream(
         {"messages": [{"role": "user", "content": build_request(task)}]},
         config={"recursion_limit": 200},
@@ -81,6 +88,7 @@ async def run_research_task(query, task=None):
         if task.get("verbose", True):
             print_progress(update)
 
+    # 主智能体负责把最终报告写到 report.md
     report_path = os.path.join(run_dir, "report.md")
     if os.path.exists(report_path):
         print(f"\nReport written to {report_path}")
@@ -92,6 +100,7 @@ async def run_research_task(query, task=None):
 
 
 async def main():
+    """命令行入口：读取本地任务并执行"""
     task = open_task()
     return await run_research_task(task["query"], task)
 

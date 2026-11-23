@@ -13,13 +13,13 @@ async def scrape_urls(
     urls, cfg: Config, worker_pool: WorkerPool, event_handler=None
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
-    Scrapes the urls
-    Args:
-        urls: List of urls
-        cfg: Config (optional)
+    抓取 URL
+    参数：
+        urls: URL 列表
+        cfg: 配置（可选）
 
-    Returns:
-        tuple[list[dict[str, Any]], list[dict[str, Any]]]: tuple containing scraped content and images
+    返回：
+        tuple[list[dict[str, Any]], list[dict[str, Any]]]: 包含抓取内容和图片的元组
 
     """
     scraped_data = []
@@ -49,8 +49,7 @@ async def scrape_urls(
     except Exception as e:
         print(f"{Fore.RED}Error in scrape_urls: {e}{Style.RESET_ALL}")
     finally:
-        # Close the requests.Session so its underlying connection pool (and the
-        # sockets it keeps alive) is released
+        # 关闭 requests.Session，释放其底层连接池（及其保持存活的套接字）
         if scraper is not None and getattr(scraper, "session", None) is not None:
             scraper.session.close()
 
@@ -59,22 +58,22 @@ async def scrape_urls(
 
 async def filter_urls(urls: list[str], config: Config) -> list[str]:
     """
-    Filter URLs based on configuration settings.
+    根据配置设置过滤 URL。
 
-    Args:
-        urls (list[str]): List of URLs to filter.
-        config (Config): Configuration object.
+    参数：
+        urls (list[str]): 要过滤的 URL 列表。
+        config (Config): 配置对象。
 
-    Returns:
-        list[str]: Filtered list of URLs.
+    返回：
+        list[str]: 过滤后的 URL 列表。
     """
     filtered_urls = []
     excluded = getattr(config, "excluded_domains", None) or []
     if not isinstance(excluded, (list, tuple, set)):
         excluded = []
     for url in urls or []:
-        # URLs must be non-empty strings; null/int noise TypeErrors the
-        # substring check on excluded domains.
+        # URL 必须是非空字符串；null/int 噪声会让排除域名的
+        # 子串检查抛出 TypeError。
         if not isinstance(url, str) or not url:
             continue
         if not any(isinstance(ex, str) and ex and ex in url for ex in excluded):
@@ -83,36 +82,36 @@ async def filter_urls(urls: list[str], config: Config) -> list[str]:
 
 async def extract_main_content(html_content: str) -> str:
     """
-    Extract the main content from HTML.
+    从 HTML 中提取主要内容。
 
-    Args:
-        html_content (str): Raw HTML content.
+    参数：
+        html_content (str): 原始 HTML 内容。
 
-    Returns:
-        str: Extracted main content.
+    返回：
+        str: 提取的主要内容。
     """
-    # Implement content extraction logic here
-    # This could involve using libraries like BeautifulSoup or custom parsing logic
-    # For now, we'll just return the raw HTML as a placeholder
+    # 在此实现内容提取逻辑
+    # 可以使用 BeautifulSoup 之类的库或自定义解析逻辑
+    # 目前仅返回原始 HTML 作为占位
     return html_content
 
 async def process_scraped_data(scraped_data: list[dict[str, Any]], config: Config) -> list[dict[str, Any]]:
     """
-    Process the scraped data to extract and clean the main content.
+    处理抓取的数据以提取并清理主要内容。
 
-    Args:
-        scraped_data (list[dict[str, Any]]): List of dictionaries containing scraped data.
-        config (Config): Configuration object.
+    参数：
+        scraped_data (list[dict[str, Any]]): 包含抓取数据的字典列表。
+        config (Config): 配置对象。
 
-    Returns:
-        list[dict[str, Any]]: Processed scraped data.
+    返回：
+        list[dict[str, Any]]: 处理后的抓取数据。
     """
     processed_data = []
     for item in scraped_data:
         if not isinstance(item, dict):
             continue
-        # Partial scraper payloads historically used strict key access and
-        # crashed mid-batch; skip/or re-emit guards keep the rest of the run.
+        # 部分抓取器载荷历史上使用严格的键访问，会在批次中途崩溃；
+        # 跳过/重新发出的保护措施让其余运行得以继续。
         status = item.get("status")
         if status == "success":
             main_content = await extract_main_content(item.get("content") or "")

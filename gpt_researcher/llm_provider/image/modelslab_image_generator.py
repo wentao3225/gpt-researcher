@@ -1,9 +1,9 @@
-"""ModelsLab image generation provider for GPT Researcher.
+"""GPT Researcher 的 ModelsLab 图片生成提供者。
 
-This module provides image generation via ModelsLab's API, supporting
-Flux, SDXL, Stable Diffusion, and 50k+ community models.
+此模块通过 ModelsLab 的 API 提供图片生成，支持
+Flux、SDXL、Stable Diffusion 以及 5 万多个社区模型。
 
-API docs: https://docs.modelslab.com
+API 文档：https://docs.modelslab.com
 """
 
 import asyncio
@@ -22,15 +22,15 @@ POLL_INTERVAL_SECONDS = 5
 
 
 class ModelsLabImageGeneratorProvider:
-    """Provider for generating images using ModelsLab's API.
+    """使用 ModelsLab 的 API 生成图片的提供者。
 
-    Supports Flux, SDXL, Stable Diffusion, and thousands of community
-    models. Auth uses API key in the request body (not Bearer token).
+    支持 Flux、SDXL、Stable Diffusion 和数千个社区模型。
+    认证使用请求体中的 API 密钥（而非 Bearer 令牌）。
 
-    Attributes:
-        model_id: The ModelsLab model to use (default: "flux").
-        api_key: ModelsLab API key from modelslab.com/account/api-key.
-        output_dir: Directory to save generated images.
+    属性：
+        model_id: 要使用的 ModelsLab 模型（默认："flux"）。
+        api_key: 来自 modelslab.com/account/api-key 的 ModelsLab API 密钥。
+        output_dir: 保存生成图片的目录。
     """
 
     DEFAULT_MODEL = "flux"
@@ -65,7 +65,7 @@ class ModelsLabImageGeneratorProvider:
         return f"img_{prompt_hash}_{index}.png"
 
     async def _download_image(self, url: str) -> bytes:
-        """Download image from URL asynchronously."""
+        """异步从 URL 下载图片。"""
         try:
             import aiohttp
 
@@ -74,7 +74,7 @@ class ModelsLabImageGeneratorProvider:
                     resp.raise_for_status()
                     return await resp.read()
         except ImportError:
-            # Fallback to requests in thread if aiohttp not available
+            # aiohttp 不可用时在线程中回退到 requests
             import requests
 
             response = await asyncio.to_thread(requests.get, url, timeout=30)
@@ -82,7 +82,7 @@ class ModelsLabImageGeneratorProvider:
             return response.content
 
     async def _poll_for_result(self, request_id: str) -> List[str]:
-        """Poll the fetch endpoint until generation completes."""
+        """轮询 fetch 端点直到生成完成。"""
         try:
             import aiohttp
 
@@ -129,18 +129,18 @@ class ModelsLabImageGeneratorProvider:
         num_images: int = 1,
         style: str = "dark",
     ) -> List[Dict[str, Any]]:
-        """Generate images using ModelsLab's text-to-image API.
+        """使用 ModelsLab 的文生图 API 生成图片。
 
-        Args:
-            prompt: The image generation prompt.
-            context: Additional context (appended to prompt).
-            research_id: Research ID for organizing output directories.
-            aspect_ratio: Ignored (ModelsLab uses width/height).
-            num_images: Number of images to generate (1–4).
-            style: Ignored (prompt controls style directly).
+        参数：
+            prompt: 图片生成提示词。
+            context: 额外上下文（追加到提示词）。
+            research_id: 用于组织输出目录的研究 ID。
+            aspect_ratio: 忽略（ModelsLab 使用宽/高）。
+            num_images: 要生成的图片数量（1–4）。
+            style: 忽略（提示词直接控制风格）。
 
-        Returns:
-            List of dicts with path, url, prompt, and alt_text keys.
+        返回：
+            含 path、url、prompt 和 alt_text 键的字典列表。
         """
         if not self.api_key:
             logger.warning("No ModelsLab API key set; skipping image generation.")
@@ -201,7 +201,7 @@ class ModelsLabImageGeneratorProvider:
         return results
 
     async def _request_images(self, payload: Dict[str, Any]) -> List[str]:
-        """POST to text2img endpoint and handle async processing."""
+        """POST 到 text2img 端点并处理异步处理。"""
         try:
             import aiohttp
 
@@ -228,12 +228,12 @@ class ModelsLabImageGeneratorProvider:
         return body.get("output", [])
 
     def is_available(self) -> bool:
-        """Return True if the API key is configured."""
+        """如果已配置 API 密钥则返回 True。"""
         return bool(self.api_key)
 
     @classmethod
     def from_config(cls, config) -> Optional["ModelsLabImageGeneratorProvider"]:
-        """Create a ModelsLabImageGeneratorProvider from a Config object."""
+        """从 Config 对象创建 ModelsLabImageGeneratorProvider。"""
         enabled = getattr(config, "image_generation_enabled", False)
         provider = getattr(config, "image_generation_provider", "google")
         if not enabled or provider != "modelslab":

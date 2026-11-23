@@ -1,26 +1,22 @@
-"""Recency benchmark: deep agent + GPT Researcher vs deep agent + raw search.
+"""时效性基准：深度智能体 + GPT Researcher 对比 深度智能体 + 原始搜索。
 
-Measures what matters for real-world research: whether an agent's report about
-fast-moving topics is CURRENT and CORRECT. Tasks spread across domains where
-the ground truth changed after the model's training cutoff - software releases,
-AI model pricing, live sports tournaments, awards season, and spaceflight -
-each with a rubric of checkpoints verified from official sources at
-benchmark-authoring time (July 2026).
+衡量真实研究场景中最重要的东西：智能体关于快速变化主题的报告是否 CURRENT（最新）
+且 CORRECT（正确）。任务覆盖多个领域（软件发布、AI 模型定价、体育赛事、颁奖季、
+航天），这些领域的基准真值在模型训练截止之后发生了变化。每个任务都带有一份
+在编写基准时（2026 年 7 月）从官方来源核实过的检查点构成的评分标准。
 
-Each report is graded per checkpoint by an LLM that judges ONLY consistency
-between the report and the provided ground truth (so the grader's own training
-cutoff does not matter):
+每份报告都由一个 LLM 按检查点评分，该 LLM 只判断报告与所给基准真值是否一致
+（因此评分模型自身的训练截止时间不影响结果）：
 
-- CORRECT: the report states the checkpoint fact (or consistent specifics)
-- PARTIAL: addressed but incomplete or vague
-- MISSING: not addressed
-- WRONG: the report contradicts the checkpoint (stale or hallucinated info)
+- CORRECT：报告陈述了该检查点事实（或给出了完全一致的细节）
+- PARTIAL：涉及该主题但不完整或含糊
+- MISSING：未涉及
+- WRONG：报告与检查点相矛盾（信息陈旧或凭空捏造）
 
-Headline metrics per system: checkpoint coverage, stale/wrong count (the
-killer metric), and the share of citations pointing at official documentation
-domains.
+每个系统的核心指标：检查点覆盖率、陈旧/错误数量（关键指标），以及指向官方
+文档域名的引用占比。
 
-Usage (from the repository root):
+用法（在仓库根目录执行）：
     python deep_agents/recency_benchmark.py --concurrency 2
 """
 
@@ -46,8 +42,8 @@ from deep_agents.report_benchmark import URL_PATTERN, write_report
 
 RESULTS_DIR = Path(__file__).parent / "benchmark_results"
 
-# Ground truth verified from official sources on 2026-07-04. Each checkpoint
-# is a fact the report should state; WRONG means the report contradicts it.
+# 基准真值于 2026-07-04 从官方来源核实。每个检查点都是报告应当陈述的事实；
+# WRONG 表示报告与其相矛盾。
 TASKS = [
     {
         "id": "deepagents",
@@ -211,6 +207,7 @@ order: [{{"checkpoint": 1, "grade": "CORRECT|PARTIAL|MISSING|WRONG", "evidence":
 
 
 def official_citation_share(report: str, official_domains: list[str]) -> dict:
+    """统计报告中引用 URL 里有多少落在任务指定的官方域名内"""
     urls = {u.rstrip(".,;") for u in URL_PATTERN.findall(report or "")}
     domains = [urlparse(u).netloc.removeprefix("www.") for u in urls if urlparse(u).netloc]
     official = [d for d in domains if any(d == od or d.endswith("." + od) for od in official_domains)]
@@ -222,11 +219,12 @@ def official_citation_share(report: str, official_domains: list[str]) -> dict:
 
 
 def grade_report(grader, task: dict, report: str) -> list[dict]:
+    """用评分模型对单份报告逐检查点评级，失败时最多重试 3 次"""
     checkpoints_text = "\n".join(f"{i}. {c}" for i, c in enumerate(task["checkpoints"], 1))
     prompt = GRADER_TEMPLATE.format(checkpoints=checkpoints_text, report=report or "(empty report)")
     for _ in range(3):
         response = grader.invoke([{"role": "user", "content": prompt}]).content.strip()
-        # Extract the JSON array even if the model wraps it in prose/fences
+        # 即使模型用散文或代码围栏包裹，也要把 JSON 数组抽出来
         start, end = response.find("["), response.rfind("]")
         if start != -1 and end > start:
             try:
@@ -239,6 +237,7 @@ def grade_report(grader, task: dict, report: str) -> list[dict]:
 
 
 def summarize(records: list[dict], system: str) -> dict:
+    """把某系统在所有任务上的评级汇总为统计指标"""
     grades = [g["grade"] for r in records for g in r[system]["grades"]]
     n = len(grades)
     coverage = (grades.count("CORRECT") + 0.5 * grades.count("PARTIAL")) / n if n else 0.0
@@ -277,6 +276,7 @@ async def main() -> None:
 
     print(f"Recency benchmark: {len(TASKS)} tasks, model {args.model}, grader {args.grader_model}\n")
 
+    # 用信号量限制并发运行的任务数，避免触发限流
     semaphore = asyncio.Semaphore(args.concurrency)
 
     async def run_task(task: dict) -> dict:
@@ -294,6 +294,7 @@ async def main() -> None:
                 "grades": grades,
                 "citations": official_citation_share(outcome["report"], task["official_domains"]),
             }
+            # 把 WRONG 的检查点编号单独打出来，便于快速定位问题
             wrong = [g for g in grades if g["grade"] == "WRONG"]
             print(f"[{task['id']}] {system}: " + ", ".join(g["grade"] for g in grades) + (f"  WRONG: {[g['checkpoint'] for g in wrong]}" if wrong else ""))
         return record
@@ -308,6 +309,7 @@ async def main() -> None:
     print("\n=== SUMMARY ===")
     print(json.dumps(summary, indent=2))
 
+    # 结果按时间戳写入 benchmark_results 目录
     RESULTS_DIR.mkdir(exist_ok=True)
     results_path = RESULTS_DIR / f"recency_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
     with open(results_path, "w", encoding="utf-8") as f:

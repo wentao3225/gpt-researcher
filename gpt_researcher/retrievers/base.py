@@ -1,61 +1,58 @@
-"""Shared contract for retrievers.
+"""检索器的共享契约。
 
-Retrievers fall into two kinds, and the difference matters:
+检索器分为两类，区别很重要：
 
-* most return **URLs that still need scraping** — the search API gives back a
-  link plus a short snippet, and the real page text is fetched later;
-* a few return **content they already fetched** — PubMed Central hands back
-  full article text, and a custom retriever's documented contract is
-  ``list[{url, raw_content}]``.
+* 大多数返回**仍需抓取的 URL** —— 搜索 API 返回链接加简短摘要，
+  真正的页面文本稍后抓取；
+* 少数返回**已经抓取的内容** —— PubMed Central 返回完整文章文本，
+  自定义检索器的文档化契约是 ``list[{url, raw_content}]``。
 
-Historically nothing recorded which kind a retriever was, so
-``_search_relevant_source_urls`` inferred it from the length of any
-``raw_content`` field::
+历史上没有任何地方记录检索器属于哪类，因此
+``_search_relevant_source_urls`` 从任何 ``raw_content`` 字段的长度
+推断::
 
     if url and raw_content and len(raw_content) > 100:
 
-That guess is wrong whenever a snippet happens to exceed the threshold: the
-result is treated as already-fetched, its URL is never scraped, and the report
-ends up with no verifiable citation for it (#1846, #1892). The workaround was
-to cap snippet lengths inside individual retrievers so they stayed under 100
-characters -- per-retriever tuning to satisfy a heuristic.
+只要摘要碰巧超过阈值，这个猜测就会出错：结果被当作已抓取，
+其 URL 永远不会被抓取，报告最终没有可验证的引用
+（#1846、#1892）。当时的变通办法是在各个检索器内部限制摘要长度，
+使其保持在 100 字符以内 —— 为了满足启发式规则而逐个检索器调参。
 
-``requires_scraping`` replaces the guess with a declaration. It defaults to
-``True``, which is the correct answer for the large majority of retrievers.
+``requires_scraping`` 用声明取代猜测。默认为 ``True``，
+这是绝大多数检索器的正确答案。
 
-Declaring is optional. A retriever that does not define ``requires_scraping``
--- including any third-party or user-defined one -- keeps the legacy
-length-based behaviour exactly, so nothing outside this repository has to
-change.
+声明是可选的。未定义 ``requires_scraping`` 的检索器 —— 包括任何
+第三方或用户自定义的 —— 完全保留旧的基于长度的行为，
+因此本仓库之外的代码无需更改。
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 
 class BaseRetriever(ABC):
-    """Optional base class documenting the retriever contract.
+    """记录检索器契约的可选基类。
 
-    Subclassing is not required; ``_search_relevant_source_urls`` only looks
-    for a ``requires_scraping`` attribute. Inheriting simply makes the
-    declaration explicit and gives new retrievers a place to read the contract.
+    不要求继承；``_search_relevant_source_urls`` 只查找
+    ``requires_scraping`` 属性。继承只是让声明显式化，
+    并给新检索器一个阅读契约的地方。
     """
 
-    #: Whether results are URLs that still need fetching (``True``, the
-    #: default) or content the retriever has already retrieved (``False``).
+    #: 结果是仍需抓取的 URL（``True``，默认），还是检索器已取回的
+    #: 内容（``False``）。
     #:
-    #: Override as a plain class attribute for a fixed answer, or as a
-    #: ``property`` when it depends on how the retriever was configured.
+    #: 答案固定时重写为普通类属性；取决于检索器配置时重写为
+    #: ``property``。
     requires_scraping: bool = True
 
     @abstractmethod
     def search(self, max_results: int = 7) -> List[Dict[str, Any]]:
-        """Return search results.
+        """返回搜索结果。
 
-        With ``requires_scraping = True`` each item should carry a URL under
-        ``url`` or ``href``; any ``body``/``snippet`` is treated as a preview
-        and the page is scraped for its real content.
+        ``requires_scraping = True`` 时，每项应在 ``url`` 或 ``href``
+        下携带 URL；任何 ``body``/``snippet`` 都被视为预览，
+        页面会被抓取以获得真实内容。
 
-        With ``requires_scraping = False`` each item should carry a URL and the
-        already-retrieved text under ``raw_content``; no scraping is performed.
+        ``requires_scraping = False`` 时，每项应携带 URL 以及
+        ``raw_content`` 下已取回的文本；不执行抓取。
         """
         raise NotImplementedError

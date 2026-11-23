@@ -1,7 +1,6 @@
-"""LLM utilities for GPT Researcher.
+"""GPT Researcher 的 LLM 工具。
 
-This module provides utility functions for interacting with various
-LLM providers through a unified interface.
+此模块提供通过统一接口与各类 LLM 提供者交互的工具函数。
 """
 from __future__ import annotations
 
@@ -25,14 +24,14 @@ from .validators import Subtopics
 
 
 def get_llm(llm_provider: str, **kwargs):
-    """Get an LLM provider instance.
+    """获取 LLM 提供者实例。
 
-    Args:
-        llm_provider: The name of the LLM provider (e.g., 'openai', 'anthropic').
-        **kwargs: Additional keyword arguments passed to the provider.
+    参数：
+        llm_provider: LLM 提供者名称（如 'openai'、'anthropic'）。
+        **kwargs: 传递给提供者的额外关键字参数。
 
-    Returns:
-        A GenericLLMProvider instance configured for the specified provider.
+    返回：
+        针对指定提供者配置的 GenericLLMProvider 实例。
     """
     from gpt_researcher.llm_provider import GenericLLMProvider
     return GenericLLMProvider.from_provider(llm_provider, **kwargs)
@@ -51,27 +50,27 @@ async def create_chat_completion(
         reasoning_effort: str | None = ReasoningEfforts.Medium.value,
         **kwargs
 ) -> str:
-    """Create a chat completion using the OpenAI API
-    Args:
-        messages (list[dict[str, str]]): The messages to send to the chat completion.
-        model (str, optional): The model to use. Defaults to None.
-        temperature (float, optional): The temperature to use. Defaults to 0.4.
-        max_tokens (int, optional): The max tokens to use. Defaults to 4000.
-        llm_provider (str, optional): The LLM Provider to use.
-        stream (bool): Whether to stream the response. Defaults to False.
-        websocket (WebSocket): The websocket used in the current request,
-        llm_kwargs (dict[str, Any], optional): Additional LLM keyword arguments. Defaults to None.
-        cost_callback: Callback function for updating cost.
-        reasoning_effort (str, optional): Reasoning effort for OpenAI's reasoning models. Defaults to 'low'.
-        **kwargs: Additional keyword arguments.
-    Returns:
-        str: The response from the chat completion.
+    """使用 OpenAI API 创建聊天补全
+    参数：
+        messages (list[dict[str, str]]): 要发送给聊天补全的消息。
+        model (str, 可选): 要使用的模型。默认为 None。
+        temperature (float, 可选): 要使用的温度。默认为 0.4。
+        max_tokens (int, 可选): 要使用的最大 token 数。默认为 4000。
+        llm_provider (str, 可选): 要使用的 LLM 提供者。
+        stream (bool): 是否流式返回响应。默认为 False。
+        websocket (WebSocket): 当前请求使用的 websocket。
+        llm_kwargs (dict[str, Any], 可选): 额外的 LLM 关键字参数。默认为 None。
+        cost_callback: 用于更新成本的回调函数。
+        reasoning_effort (str, 可选): OpenAI 推理模型的推理力度。默认为 'low'。
+        **kwargs: 额外的关键字参数。
+    返回：
+        str: 聊天补全的响应。
     """
-    # validate input
+    # 校验输入
     if model is None:
         raise ValueError("Model cannot be None")
-    # Sanity guard against absurd values (e.g., env var typos). The actual
-    # per-model output limits are enforced by the upstream provider.
+    # 对荒谬值（如环境变量拼写错误）做合理性防护。各模型实际的
+    # 输出上限由上游提供者强制执行。
     if max_tokens is not None and max_tokens > 200_000:
         raise ValueError(
             f"max_tokens={max_tokens} exceeds the largest output limit of "
@@ -80,7 +79,7 @@ async def create_chat_completion(
             "STRATEGIC_TOKEN_LIMIT env vars for typos."
         )
 
-    # Get the provider from supported providers
+    # 从支持的提供者中获取提供者
     provider_kwargs = {'model': model}
 
     if model in SUPPORT_REASONING_EFFORT_MODELS:
@@ -89,17 +88,18 @@ async def create_chat_completion(
     if supports_temperature(model):
         provider_kwargs['temperature'] = temperature
     else:
-        # These models enforce their default temperature, but output limits
-        # still apply (langchain-openai maps max_tokens to the API's
-        # max_completion_tokens). Note that for reasoning models the limit
-        # covers reasoning tokens too, so budgets need extra headroom.
+        # 这些模型强制使用其默认温度，但输出上限仍然适用
+        # （langchain-openai 将 max_tokens 映射到 API 的
+        # max_completion_tokens）。注意对推理模型而言该上限
+        # 也涵盖推理 token，因此预算需要额外余量。
         provider_kwargs['temperature'] = None
     provider_kwargs['max_tokens'] = max_tokens
 
-    # Caller/env overrides win over the computed defaults above. Applied last on purpose: before this the
-    # unconditional ``provider_kwargs['temperature'] = ...`` clobbered a temperature passed through
-    # ``llm_kwargs`` or ``LLM_KWARGS`` — the documented escape hatch — so providers that accept exactly one
-    # temperature (Moonshot kimi-k3 answers 400 "only 1 is allowed for this model" to 0.35) could not be used.
+    # 调用方/环境变量覆盖优先于上面计算的默认值。特意放在最后应用：在此之前，
+    # 无条件的 ``provider_kwargs['temperature'] = ...`` 会覆盖通过 ``llm_kwargs``
+    # 或 ``LLM_KWARGS``（文档中说明的逃生通道）传入的温度，导致只接受唯一一个
+    # 温度值的提供者无法使用（Moonshot kimi-k3 对 0.35 会返回 400
+    # "only 1 is allowed for this model"）。
     if llm_kwargs:
         provider_kwargs.update(llm_kwargs)
     elif os.environ.get("LLM_KWARGS"):
@@ -116,7 +116,7 @@ async def create_chat_completion(
 
     provider = get_llm(llm_provider, **provider_kwargs)
     response = ""
-    # create response
+    # 创建响应
     max_attempts = 1 if (stream and websocket is not None) else 10
     last_exception: Exception | None = None
     for attempt in range(1, max_attempts + 1):
@@ -134,8 +134,7 @@ async def create_chat_completion(
                 continue
             break
 
-        # A provider can bill a completed request that returns empty content
-        # after spending its budget on reasoning, so account for every call.
+        # 提供者可能把预算花在推理上后返回空内容的已完成请求，因此每次调用都记账。
         if cost_callback:
             llm_costs = calculate_llm_cost(
                 llm_provider=llm_provider,
@@ -173,18 +172,18 @@ async def construct_subtopics(
     **kwargs
 ) -> list:
     """
-    Construct subtopics based on the given task and data.
+    根据给定的任务和数据构建子主题。
 
-    Args:
-        task (str): The main task or topic.
-        data (str): Additional data for context.
-        config: Configuration settings.
-        subtopics (list, optional): Existing subtopics. Defaults to [].
-        prompt_family (PromptFamily): Family of prompts
-        **kwargs: Additional keyword arguments.
+    参数：
+        task (str): 主任务或主题。
+        data (str): 用于上下文的附加数据。
+        config: 配置项。
+        subtopics (list, 可选): 已有的子主题。默认为 []。
+        prompt_family (PromptFamily): 提示词家族
+        **kwargs: 额外的关键字参数。
 
-    Returns:
-        list: A list of constructed subtopics.
+    返回：
+        list: 构建出的子主题列表。
     """
     try:
         parser = PydanticOutputParser(pydantic_object=Subtopics)

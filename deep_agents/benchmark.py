@@ -1,17 +1,16 @@
-"""Benchmark agents: deep agent + GPT Researcher vs deep agent + raw search.
+"""基准智能体：深度智能体 + GPT Researcher vs 深度智能体 + 原始搜索。
 
-Defines two deep agents that differ only in their research tooling:
+定义两个仅在 research 工具上不同的深度智能体：
 
-- baseline: the deepagents quickstart setup - a raw Tavily `internet_search`
-  tool (https://docs.langchain.com/oss/python/deepagents/quickstart).
-- gptr: this example's setup - GPT Researcher exposed as `quick_search` and
-  `deep_research` tools.
+- baseline：deepagents 快速入门设置 - 一个原始 Tavily `internet_search`
+  工具（https://docs.langchain.com/oss/python/deepagents/quickstart）。
+- gptr：本示例的设置 - 把 GPT Researcher 暴露为 `quick_search` 和
+  `deep_research` 工具。
 
-Both use the same model, the same system prompt and the same harness, so any
-difference in output quality comes from the research engine alone. Used by
-`drb_generate.py` to produce reports for DeepResearch Bench
-(https://github.com/Ayanami0730/deep_research_bench). See BENCHMARK.md for
-results and reproduction steps.
+两者使用相同的模型、相同的系统提示词和相同的框架，因此输出质量的
+任何差异都只来自研究引擎。由 `drb_generate.py` 用于为
+DeepResearch Bench（https://github.com/Ayanami0730/deep_research_bench）
+生成报告。结果和复现步骤见 BENCHMARK.md。
 """
 
 from dotenv import load_dotenv
@@ -28,9 +27,9 @@ from deepagents import create_deep_agent
 
 from deep_agents.tools import build_research_tools
 
-# Shared between both systems so the only variable is the research tooling.
-# Each system additionally gets guidance on how to use its own tools, in the
-# spirit of the deepagents quickstart prompt which documents `internet_search`.
+# 两个系统共享，因此唯一变量是研究工具。
+# 每个系统另外获得如何使用自己工具的指引，
+# 遵循记录了 `internet_search` 的 deepagents 快速入门提示词精神。
 SYSTEM_PROMPT = f"""You are an expert researcher. Today's date is \
 {datetime.now().strftime('%B %d, %Y')}. Use your tools to research the user's \
 question and answer it accurately. Always ground your answer in researched \
@@ -81,7 +80,7 @@ def message_text(message) -> str:
 
 
 def build_baseline_agent(model: str, system_prompt: str | None = None):
-    """The deepagents quickstart research agent: one raw Tavily search tool."""
+    """deepagents 快速入门研究智能体：一个原始 Tavily 搜索工具。"""
     tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
     def internet_search(
@@ -90,14 +89,14 @@ def build_baseline_agent(model: str, system_prompt: str | None = None):
         topic: str = "general",
         include_raw_content: bool = False,
     ):
-        """Run a web search. Keep queries short (under 400 characters).
+        """执行网页搜索。保持查询简短（400 字符以内）。
 
-        topic must be one of "general", "news" or "finance".
+        topic 必须是 "general"、"news" 或 "finance" 之一。
         """
         if topic not in ("general", "news", "finance"):
             topic = "general"
         return tavily_client.search(
-            query[:400],  # Tavily rejects queries longer than 400 chars
+            query[:400],  # Tavily 拒绝超过 400 字符的查询
             max_results=max_results,
             include_raw_content=include_raw_content,
             topic=topic,
@@ -112,7 +111,7 @@ def build_baseline_agent(model: str, system_prompt: str | None = None):
 
 
 def build_gptr_agent(model: str, source: str = "web", system_prompt: str | None = None):
-    """This example's research agent: GPT Researcher as the research engine."""
+    """本示例的研究智能体：GPT Researcher 作为研究引擎。"""
     cost_tracker = {"total": 0.0}
     quick_search, deep_research = build_research_tools({"source": source}, cost_tracker)
     agent = create_deep_agent(
