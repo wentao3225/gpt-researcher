@@ -24,7 +24,7 @@
 
 **GPT Researcher 是首个开放的深度研究代理，可针对任意任务开展网络与本地研究。**
 
-代理可以生成详细、正式且客观的研究报告，并提供自定义选项，专注于相关资源、结构框架和经验报告。GPT Researcher 早已不止于 RAG：规划代理与执行代理将每个任务拆解为研究问题，[决策模型](https://docs.gptr.dev/docs/gpt-researcher/gptr/context-filter)只保留真正有助于回答问题的上下文，[多代理](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/langgraph)工作流协调各专业代理完成从规划到发布的全过程，[递归深度研究](https://docs.gptr.dev/docs/gpt-researcher/gptr/deep_research)则从广度和深度两方面探索主题。研究并行执行，因此快速、稳定、可靠，并能减少错误信息。
+代理可以生成详细、正式且客观的研究报告，并提供自定义选项，专注于相关资源、结构框架和经验报告。GPT Researcher 早已不止于 RAG：规划代理与执行代理将每个任务拆解为研究问题，[决策模型](https://docs.gptr.dev/docs/gpt-researcher/gptr/context-filter)只保留真正有助于回答问题的上下文，多代理工作流协调各专业代理完成从规划到发布的全过程，[递归深度研究](https://docs.gptr.dev/docs/gpt-researcher/gptr/deep_research)则从广度和深度两方面探索主题。研究并行执行，因此快速、稳定、可靠，并能减少错误信息。
 
 **我们的使命是利用人工智能的力量，为个人和组织提供准确、客观和事实的信息。**
 
@@ -311,7 +311,7 @@ GPT Researcher MCP 服务器让 Claude 等 AI 应用能够执行深度研究。�
 
 一次运行平均可生成 5-6 页的研究报告，支持 PDF、Docx 和 Markdown 等多种格式。
 
-请点击[这里](https://github.com/assafelovic/gpt-researcher/tree/master/multi_agents)查看，或前往我们的文档了解 [LangGraph](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/langgraph) 与 [AG2](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/ag2) 的更多信息。
+请点击[这里](https://github.com/assafelovic/gpt-researcher/tree/master/multi_agents)查看源码与配置。
 
 ## 🔍 可观测性
 

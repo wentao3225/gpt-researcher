@@ -309,7 +309,7 @@ The human-in-the-loop step can also be extended. Right now there's one `RevertTo
 ## Learn More
 
 - [GPT Researcher documentation](https://docs.gptr.dev/) — Assaf Elovic's full documentation for GPT Researcher
-- [AG2 integration guide](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/ag2) — the original AG2 integration docs from the GPT Researcher team
+- [Multi-Agents code](https://github.com/assafelovic/gpt-researcher/tree/master/multi_agents) — the AG2 / LangGraph integration source in the GPT Researcher repo
 - [Deep Research reference page](https://docs.ag2.ai/latest/docs/user-guide/reference-tools/deep-research/) — DeepResearchTool vs. GPT Researcher comparison
 - [AG-UI protocol](https://docs.ag2.ai/latest/docs/user-guide/ag-ui/backend-deepdive/) — streaming agent state to a frontend
 

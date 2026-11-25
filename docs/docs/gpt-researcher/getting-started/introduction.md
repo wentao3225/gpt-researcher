@@ -10,7 +10,7 @@
 
 **[GPT Researcher](https://gptr.dev) is an autonomous agent designed for comprehensive online research on a variety of tasks.** 
 
-The agent can produce detailed, factual and unbiased research reports, with customization options for focusing on relevant resources, outlines, and lessons. GPT Researcher goes well beyond RAG: planner and execution agents break each task into research questions, [decision models](/docs/gpt-researcher/gptr/context-filter) keep only the context that is actually useful for answering them, [multi-agent](/docs/gpt-researcher/multi_agents/langgraph) workflows coordinate specialized agents from planning to publication, and [recursive deep research](/docs/gpt-researcher/gptr/deep_research) explores a topic in both breadth and depth. Research runs in parallel rather than sequentially, which keeps it fast, stable and reliable.
+The agent can produce detailed, factual and unbiased research reports, with customization options for focusing on relevant resources, outlines, and lessons. GPT Researcher goes well beyond RAG: planner and execution agents break each task into research questions, [decision models](/docs/gpt-researcher/gptr/context-filter) keep only the context that is actually useful for answering them, multi-agent workflows coordinate specialized agents from planning to publication, and [recursive deep research](/docs/gpt-researcher/gptr/deep_research) explores a topic in both breadth and depth. Research runs in parallel rather than sequentially, which keeps it fast, stable and reliable.
 
 ## Why GPT Researcher?
 

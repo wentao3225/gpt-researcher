@@ -34,7 +34,7 @@ const FEATURES = [
   {
     title: 'Multi-agent teams',
     body: 'LangGraph and AG2 agents that plan, research, review and publish together.',
-    to: '/docs/gpt-researcher/multi_agents/langgraph',
+    to: '/docs/gpt-researcher/frontend/nextjs-frontend',
     icon: (<Icon><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M2.5 20c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M10.5 20c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5" /></Icon>),
   },
   {

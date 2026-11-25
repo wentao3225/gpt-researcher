@@ -19,5 +19,6 @@
     "longDescription": "An autonomous agent that conducts deep research on any data using any LLM providers.",
     "category": "Research",
     "websiteURL": "https://github.com/assafelovic/gpt-researcher"
-  }
+  },
+  "skills": "./skills/"
 }

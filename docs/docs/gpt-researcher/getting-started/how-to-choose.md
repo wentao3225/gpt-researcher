@@ -85,8 +85,8 @@ This version is recommended for local, experimental, and educational use. We're 
 - LangGraph or AG2 library
 
 **Learn More:**
-- [GPT Researcher x LangGraph](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/langgraph)
-- [GPT Researcher x AG2](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/ag2)
+- [Multi-Agents code](https://github.com/assafelovic/gpt-researcher/tree/master/multi_agents)
+- [AG2 integration guide](https://docs.gptr.dev/blog/2026-03-03-gpt-researcher-ag2/)
 
 ## Comparison Table
 
@@ -112,10 +112,9 @@ To learn more about each of the options, check out these docs and code snippets:
    - Clone the repository: `git clone https://github.com/assafelovic/gpt-researcher.git`
    - [Installation instructions](https://docs.gptr.dev/docs/gpt-researcher/getting-started)
 
-3. **Multi-Agent System**: 
+3. **Multi-Agent System**:
    - [Multi-Agents code](https://github.com/assafelovic/gpt-researcher/tree/master/multi_agents)
-   - [LangGraph documentation](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/langgraph)
-   - [AG2 documentation](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/ag2)
+   - [AG2 integration guide](https://docs.gptr.dev/blog/2026-03-03-gpt-researcher-ag2/)
    - [Blog](https://docs.gptr.dev/blog/gptr-langgraph)
 
 ## Versioning and Updates

@@ -1,18 +1,9 @@
-# AG2
-
+# AG2 x GPT Researcher
 [AG2](https://github.com/ag2ai/ag2) is a framework for building multi-agent applications with LLMs.
 This example uses AG2 to orchestrate the GPT Researcher multi-agent workflow.
 
-Check out our blog posts:
-- [Deep Web Research with AG2 and GPT Researcher](https://docs.ag2.ai/latest/docs/blog/#deep-web-research-with-ag2-and-gpt-researcher) (AG2 Blog)
-
 ## Use case
-By using AG2, the research process can be significantly improved in depth and quality by leveraging multiple agents with specialized skills.
-This example showcases how a team of AI agents can work together to conduct research on a given topic, from planning to publication.
-
-An average run generates a 5-6 page research report in multiple formats such as PDF, Docx and Markdown.
-
-Please note: This example uses the OpenAI API only for optimized performance.
+This example mirrors the LangGraph flow with the same set of agents and stages, but uses AG2 as the orchestration layer.
 
 ## The Multi Agent Team
 The research team is made up of 8 agents:
@@ -26,9 +17,6 @@ The research team is made up of 8 agents:
 - **Publisher** - Responsible for publishing the final report in various formats.
 
 ## How it works
-
-![AG2 Pipeline](/img/ag2-pipeline.webp)
-
 Stages:
 1. Planning stage
 2. Data collection and analysis
@@ -37,7 +25,7 @@ Stages:
 5. Publication
 
 ## How to run
-1. Install required packages:
+1. Install dependencies:
     ```bash
     pip install -r requirements.txt
     pip install -r multi_agents/ag2/requirements.txt

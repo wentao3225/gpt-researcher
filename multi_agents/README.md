@@ -1,7 +1,8 @@
-# LangGraph
-
+# LangGraph x GPT Researcher
 [LangGraph](https://python.langchain.com/docs/langgraph) is a library for building stateful, multi-actor applications with LLMs. 
 This example uses Langgraph to automate the process of an in depth research on any given topic.
+
+Looking for the AG2 version? See `multi_agents/ag2/` and the AG2 docs page.
 
 ## Use case
 By using Langgraph, the research process can be significantly improved in depth and quality by leveraging multiple agents with specialized skills. 
@@ -9,10 +10,10 @@ This example showcases how a team of AI agents can work together to conduct rese
 
 An average run generates a 5-6 page research report in multiple formats such as PDF, Docx and Markdown.
 
-Please note: This example uses the OpenAI API only for optimized performance.
+Please note: Multi-agents are utilizing the same configuration of models like GPT-Researcher does. However, only the SMART_LLM is used for the time being. Please refer to the [LLM config pages](https://docs.gptr.dev/docs/gpt-researcher/llms).
 
 ## The Multi Agent Team
-The research team is made up of 7 AI agents:
+The research team is made up of 8 agents:
 - **Human** - The human in the loop that oversees the process and provides feedback to the agents.
 - **Chief Editor** - Oversees the research process and manages the team. This is the "master" agent that coordinates the other agents using Langgraph.
 - **Researcher** (gpt-researcher) - A specialized autonomous agent that conducts in depth research on a given topic.
@@ -32,7 +33,7 @@ Generally, the process is based on the following stages:
 
 ### Architecture
 <div align="center">
-<img align="center" height="600" src="https://cowriter-images.s3.amazonaws.com/multi-agents-gptr.png"></img>
+<img align="center" height="600" src="https://github.com/user-attachments/assets/ef561295-05f4-40a8-a57d-8178be687b18">
 </div>
 <br clear="all"/>
 
@@ -48,15 +49,12 @@ More specifically (as seen in the architecture diagram) the process is as follow
 - Publisher - Publishes the final report to multi formats such as PDF, Docx, Markdown, etc.
 
 ## How to run
-1. Install required packages:
+1. Install required packages found in this root folder including `langgraph`:
     ```bash
     pip install -r requirements.txt
     ```
-3. Update env variables
-   ```bash
-   export OPENAI_API_KEY={Your OpenAI API Key here}
-   export TAVILY_API_KEY={Your Tavily API Key here}
-   ```
+3. Update env variables, see the [GPT-Researcher docs](https://docs.gptr.dev/docs/gpt-researcher/llms) for more details.
+
 2. Run the application:
     ```bash
     python main.py
@@ -68,6 +66,7 @@ To change the research query and customize the report, edit the `task.json` file
 - `query` - The research query or task.
 - `model` - The OpenAI LLM to use for the agents.
 - `max_sections` - The maximum number of sections in the report. Each section is a subtopic of the research query.
+- `max_plan_revisions` - The maximum number of human-requested plan revisions before the workflow exits with a clear error. Set to `null` to rely on LangGraph's recursion limit instead.
 - `include_human_feedback` - If true, the user can provide feedback to the agents. If false, the agents will work autonomously.
 - `publish_formats` - The formats to publish the report in. The reports will be written in the `output` directory.
 - `source` - The location from which to conduct the research. Options: `web` or `local`. For local, please add `DOC_PATH` env var.
@@ -80,7 +79,8 @@ To change the research query and customize the report, edit the `task.json` file
 {
   "query": "Is AI in a hype cycle?",
   "model": "gpt-4o",
-  "max_sections": 3, 
+  "max_sections": 3,
+  "max_plan_revisions": 3,
   "publish_formats": { 
     "markdown": true,
     "pdf": true,
@@ -106,43 +106,3 @@ langgraph up
 ```
 
 From there, see documentation [here](https://github.com/langchain-ai/langgraph-example) on how to use the streaming and async endpoints, as well as the playground.
-
-## NextJS Frontend App
-
-The React app (located in `frontend` directory) is our Frontend 2.0 which we hope will enable us to display the robustness of the backend on the frontend, as well.
-
-It comes with loads of added features, such as: 
- - a drag-n-drop user interface for uploading and deleting files to be used as local documents by GPTResearcher.
- - a GUI for setting your GPTR environment variables.
- - the ability to trigger the multi_agents flow via the Backend Module or Langgraph Cloud Host (currently in closed beta).
- - stability fixes
- - and more coming soon!
-
-### Run the NextJS React App with Docker
-
-> **Step 1** - [Install Docker](https://docs.gptr.dev/docs/gpt-researcher/getting-started/getting-started-with-docker)
-
-> **Step 2** - Clone the '.env.example' file, add your API Keys to the cloned file and save the file as '.env'
-
-> **Step 3** - Within the docker-compose file comment out services that you don't want to run with Docker.
-
-```bash
-$ docker-compose up --build
-```
-
-> **Step 4** - By default, if you haven't uncommented anything in your docker-compose file, this flow will start 2 processes:
- - the Python server running on localhost:8000
- - the React app running on localhost:3000
-
-Visit localhost:3000 on any browser and enjoy researching!
-
-
-### Run the NextJS React App with NPM
-
-```bash
-cd frontend/nextjs
-nvm install 18.17.0
-nvm use v18.17.0
-npm install --legacy-peer-deps
-npm run dev
-```
