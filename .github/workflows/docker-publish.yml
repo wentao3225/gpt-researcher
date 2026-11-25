@@ -9,7 +9,6 @@ on:
       - Dockerfile
       - .dockerignore
       - requirements.txt
-      - multi_agents/requirements.txt
       - frontend/nextjs/Dockerfile
       - frontend/nextjs/package.json
       - .github/workflows/docker-publish.yml
